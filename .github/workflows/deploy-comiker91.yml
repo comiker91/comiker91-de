@@ -48,6 +48,20 @@ jobs:
             exit 1
           }
 
+      - name: Preserve legacy binary theme assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          LOGO='themes/comiker91-streamer-theme/assets/images/logoComiker.png'
+          if [ ! -f "$LOGO" ]; then
+            mkdir -p "$(dirname "$LOGO")"
+            curl --fail --silent --show-error --location --max-time 20 \
+              'https://comiker91.de/wp-content/themes/comiker91-streamer-theme/assets/images/logoComiker.png' \
+              --output "$LOGO"
+            test -s "$LOGO"
+            echo 'Preserved current production logo for deployment package.'
+          fi
+
       - name: Build deployment package
         id: package
         shell: bash

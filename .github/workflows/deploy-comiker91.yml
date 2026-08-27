@@ -81,9 +81,21 @@ jobs:
           set -euo pipefail
           code="$(curl --silent --show-error --location --output /dev/null --write-out '%{http_code}' --max-time 30 https://comiker91.de/)"
           test "$code" -ge 200 && test "$code" -lt 400
-          HEALTH="$(curl --fail --silent --show-error --max-time 20 'https://comiker91.de/wp-json/cm91-content/v1/health')"
-          printf '%s' "$HEALTH" | grep -q '"draft_only":true'
-          printf '%s' "$HEALTH" | grep -q '"non_draft_updates_blocked":true'
+          HEALTH_FILE="$RUNNER_TEMP/cm91-content-health.txt"
+          HEALTH_CODE="$(curl --silent --show-error --output "$HEALTH_FILE" --write-out '%{http_code}' --max-time 20 'https://comiker91.de/wp-json/cm91-content/v1/health')"
+          echo "Health HTTP: $HEALTH_CODE"
+          cat "$HEALTH_FILE" || true
+          test "$HEALTH_CODE" -ge 200 && test "$HEALTH_CODE" -lt 300
+          grep -q '"draft_only":true' "$HEALTH_FILE"
+          grep -q '"non_draft_updates_blocked":true' "$HEALTH_FILE"
+      - name: Upload content bridge health diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cm91-content-health-${{ github.run_id }}
+          path: ${{ runner.temp }}/cm91-content-health.txt
+          if-no-files-found: warn
+          retention-days: 3
 
   content:
     name: Import changed content drafts

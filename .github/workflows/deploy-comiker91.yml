@@ -1,0 +1,89 @@
+name: Deploy comiker91.de
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'plugins/**'
+      - 'themes/**'
+      - '.github/workflows/deploy-comiker91.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: comiker91-production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy WordPress code
+    runs-on: [self-hosted, linux, x64, seo]
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Validate repository layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d plugins
+          test -d themes
+          find plugins themes -type f -name '*.php' -print0 | xargs -0 -r -n1 php -l
+
+      - name: Check deployment secret exists
+        env:
+          CM91_DEPLOY_SECRET: ${{ secrets.CM91_DEPLOY_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CM91_DEPLOY_SECRET:-}" || {
+            echo 'Repository secret CM91_DEPLOY_SECRET is missing. Bootstrap is not complete yet.' >&2
+            exit 1
+          }
+
+      - name: Build deployment package
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE="$RUNNER_TEMP/comiker91-deploy.zip"
+          zip -q -r "$ARCHIVE" plugins themes \
+            -x '*/.DS_Store' '*/Thumbs.db' '*/.gitkeep'
+          echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
+
+      - name: Sign and deploy to comiker91.de
+        env:
+          CM91_DEPLOY_SECRET: ${{ secrets.CM91_DEPLOY_SECRET }}
+          ARCHIVE: ${{ steps.package.outputs.archive }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIGNATURE="$(openssl dgst -sha256 -hmac "$CM91_DEPLOY_SECRET" "$ARCHIVE" | awk '{print $2}')"
+          RESPONSE="$RUNNER_TEMP/deploy-response.json"
+          HTTP_CODE="$(curl --silent --show-error --output "$RESPONSE" --write-out '%{http_code}' \
+            --request POST \
+            --header "X-CM91-Deploy-Signature: sha256=$SIGNATURE" \
+            --header "X-CM91-Commit: $GITHUB_SHA" \
+            --form "package=@${ARCHIVE};type=application/zip" \
+            'https://comiker91.de/wp-json/cm91-deploy/v1/push')"
+          cat "$RESPONSE"; echo
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "Deploy failed with HTTP $HTTP_CODE" >&2
+            exit 1
+          fi
+
+      - name: Verify public site after deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl --silent --show-error --location --output /dev/null --write-out '%{http_code}' --max-time 30 https://comiker91.de/)"
+          echo "comiker91.de returned HTTP $code"
+          test "$code" -ge 200
+          test "$code" -lt 400

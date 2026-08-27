@@ -1,0 +1,1 @@
+<?php get_header(); ?><section class="page-hero"><div class="shell narrow"><span class="eyebrow">404</span><h1>Hier läuft gerade kein Stream.</h1><p>Die angeforderte Seite wurde nicht gefunden.</p><a class="btn primary" href="<?php echo esc_url(home_url('/')); ?>">Zur Startseite</a></div></section><?php get_footer(); ?>

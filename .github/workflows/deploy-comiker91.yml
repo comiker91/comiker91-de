@@ -7,6 +7,8 @@ on:
     paths:
       - 'plugins/**'
       - 'themes/**'
+      - 'content/**'
+      - 'scripts/validate-content-package.php'
       - '.github/workflows/deploy-comiker91.yml'
   workflow_dispatch:
 
@@ -22,13 +24,11 @@ jobs:
     name: Deploy WordPress code
     runs-on: [self-hosted, linux, x64, seo]
     timeout-minutes: 10
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 2
-
       - name: Validate repository layout
         shell: bash
         run: |
@@ -36,18 +36,15 @@ jobs:
           test -d plugins
           test -d themes
           find plugins themes -type f -name '*.php' -print0 | xargs -0 -r -n1 php -l
-
+          test -f scripts/validate-content-package.php
+          php -l scripts/validate-content-package.php
       - name: Check deployment secret exists
         env:
           CM91_DEPLOY_SECRET: ${{ secrets.CM91_DEPLOY_SECRET }}
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${CM91_DEPLOY_SECRET:-}" || {
-            echo 'Repository secret CM91_DEPLOY_SECRET is missing. Bootstrap is not complete yet.' >&2
-            exit 1
-          }
-
+          test -n "${CM91_DEPLOY_SECRET:-}" || { echo 'Repository secret CM91_DEPLOY_SECRET is missing.' >&2; exit 1; }
       - name: Preserve legacy binary theme assets
         shell: bash
         run: |
@@ -55,23 +52,17 @@ jobs:
           LOGO='themes/comiker91-streamer-theme/assets/images/logoComiker.png'
           if [ ! -f "$LOGO" ]; then
             mkdir -p "$(dirname "$LOGO")"
-            curl --fail --silent --show-error --location --max-time 20 \
-              'https://comiker91.de/wp-content/themes/comiker91-streamer-theme/assets/images/logoComiker.png' \
-              --output "$LOGO"
+            curl --fail --silent --show-error --location --max-time 20 'https://comiker91.de/wp-content/themes/comiker91-streamer-theme/assets/images/logoComiker.png' --output "$LOGO"
             test -s "$LOGO"
-            echo 'Preserved current production logo for deployment package.'
           fi
-
       - name: Build deployment package
         id: package
         shell: bash
         run: |
           set -euo pipefail
           ARCHIVE="$RUNNER_TEMP/comiker91-deploy.zip"
-          zip -q -r "$ARCHIVE" plugins themes \
-            -x '*/.DS_Store' '*/Thumbs.db' '*/.gitkeep'
+          zip -q -r "$ARCHIVE" plugins themes -x '*/.DS_Store' '*/Thumbs.db' '*/.gitkeep'
           echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
-
       - name: Sign and deploy to comiker91.de
         env:
           CM91_DEPLOY_SECRET: ${{ secrets.CM91_DEPLOY_SECRET }}
@@ -81,23 +72,69 @@ jobs:
           set -euo pipefail
           SIGNATURE="$(openssl dgst -sha256 -hmac "$CM91_DEPLOY_SECRET" "$ARCHIVE" | awk '{print $2}')"
           RESPONSE="$RUNNER_TEMP/deploy-response.json"
-          HTTP_CODE="$(curl --silent --show-error --output "$RESPONSE" --write-out '%{http_code}' \
-            --request POST \
-            --header "X-CM91-Deploy-Signature: sha256=$SIGNATURE" \
-            --header "X-CM91-Commit: $GITHUB_SHA" \
-            --form "package=@${ARCHIVE};type=application/zip" \
-            'https://comiker91.de/wp-json/cm91-deploy/v1/push')"
+          HTTP_CODE="$(curl --silent --show-error --output "$RESPONSE" --write-out '%{http_code}' --request POST --header "X-CM91-Deploy-Signature: sha256=$SIGNATURE" --header "X-CM91-Commit: $GITHUB_SHA" --form "package=@${ARCHIVE};type=application/zip" 'https://comiker91.de/wp-json/cm91-deploy/v1/push')"
           cat "$RESPONSE"; echo
-          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
-            echo "Deploy failed with HTTP $HTTP_CODE" >&2
-            exit 1
-          fi
-
-      - name: Verify public site after deploy
+          test "$HTTP_CODE" -ge 200 && test "$HTTP_CODE" -lt 300
+      - name: Verify public site and content bridge
         shell: bash
         run: |
           set -euo pipefail
           code="$(curl --silent --show-error --location --output /dev/null --write-out '%{http_code}' --max-time 30 https://comiker91.de/)"
-          echo "comiker91.de returned HTTP $code"
-          test "$code" -ge 200
-          test "$code" -lt 400
+          test "$code" -ge 200 && test "$code" -lt 400
+          HEALTH="$(curl --fail --silent --show-error --max-time 20 'https://comiker91.de/wp-json/cm91-content/v1/health')"
+          printf '%s' "$HEALTH" | grep -q '"draft_only":true'
+          printf '%s' "$HEALTH" | grep -q '"non_draft_updates_blocked":true'
+
+  content:
+    name: Import changed content drafts
+    runs-on: [self-hosted, linux, x64, seo]
+    timeout-minutes: 10
+    needs: deploy
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Select and validate changed article packages
+        id: content_package
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE="$RUNNER_TEMP/comiker91-content.zip"
+          STAGE="$RUNNER_TEMP/content-stage"
+          mkdir -p "$STAGE"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo 'Manual run: content import intentionally disabled.'
+            echo 'has_content=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          mapfile -t DIRS < <(git diff --name-only "$GITHUB_SHA^" "$GITHUB_SHA" -- 'content/queue/**' | awk -F/ 'NF >= 4 {print $1"/"$2"/"$3}' | sort -u)
+          if [ "${#DIRS[@]}" -eq 0 ]; then
+            echo 'No changed content/queue article; skipping import.'
+            echo 'has_content=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          for dir in "${DIRS[@]}"; do
+            test -f "$dir/manifest.json" || { echo "Missing $dir/manifest.json" >&2; exit 1; }
+            test -f "$dir/article.html" || { echo "Missing $dir/article.html" >&2; exit 1; }
+            php scripts/validate-content-package.php "$dir"
+            cp -a "$dir" "$STAGE/"
+          done
+          (cd "$STAGE" && zip -q -r "$ARCHIVE" . -x '*/.DS_Store' '*/Thumbs.db' '*/.gitkeep')
+          echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
+          echo 'has_content=true' >> "$GITHUB_OUTPUT"
+      - name: Sign and import changed drafts to WordPress
+        if: steps.content_package.outputs.has_content == 'true'
+        env:
+          CM91_DEPLOY_SECRET: ${{ secrets.CM91_DEPLOY_SECRET }}
+          ARCHIVE: ${{ steps.content_package.outputs.archive }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CM91_DEPLOY_SECRET:-}" || { echo 'CM91_DEPLOY_SECRET missing.' >&2; exit 1; }
+          SIGNATURE="$(openssl dgst -sha256 -hmac "$CM91_DEPLOY_SECRET" "$ARCHIVE" | awk '{print $2}')"
+          RESPONSE="$RUNNER_TEMP/content-response.json"
+          HTTP_CODE="$(curl --silent --show-error --output "$RESPONSE" --write-out '%{http_code}' --request POST --header "X-CM91-Deploy-Signature: sha256=$SIGNATURE" --header "X-CM91-Commit: $GITHUB_SHA" --form "package=@${ARCHIVE};type=application/zip" 'https://comiker91.de/wp-json/cm91-content/v1/import')"
+          cat "$RESPONSE"; echo
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then exit 1; fi
+          grep -q '"ok":true' "$RESPONSE"

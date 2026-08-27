@@ -110,3 +110,5 @@
   .page-hero h1 { font-size: clamp(1.9rem, 9.8vw, 2.35rem) !important; }
   .hero .mini-socials { grid-template-columns: minmax(0, 1fr) !important; }
 }
+
+/* deploy-marker: mobile-layout-2.4.2 */

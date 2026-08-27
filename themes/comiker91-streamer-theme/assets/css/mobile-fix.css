@@ -94,10 +94,23 @@
   .post-grid,
   .home-news-grid,
   .home-topic-grid,
-  .streamer-picks-list,
   .two-col,
   .suggest-grid,
   .comitement-feature { grid-template-columns: minmax(0, 1fr) !important; }
+
+  /* Streamer recommendations intentionally stay two-up on phones. */
+  .streamer-picks-list {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 32px 18px !important;
+    justify-content: stretch !important;
+    width: 100% !important;
+  }
+  .streamer-pick { width: 100% !important; max-width: 100% !important; min-width: 0 !important; text-align: center; }
+  .streamer-pick-avatar { max-width: min(100%, 150px) !important; margin-inline: auto !important; }
+  .streamer-pick-name,
+  .streamer-pick-link,
+  .streamer-pick-live { max-width: 100% !important; overflow-wrap: anywhere; }
 
   .news-item { grid-template-columns: minmax(78px, 105px) minmax(0, 1fr) !important; }
   .footer-grid { grid-template-columns: minmax(0, 1fr) !important; }
@@ -109,6 +122,7 @@
   .hero h1,
   .page-hero h1 { font-size: clamp(1.9rem, 9.8vw, 2.35rem) !important; }
   .hero .mini-socials { grid-template-columns: minmax(0, 1fr) !important; }
+  .streamer-picks-list { gap: 26px 12px !important; }
 }
 
-/* deploy-marker: mobile-layout-2.4.2 */
+/* deploy-marker: mobile-layout-2.4.3 */

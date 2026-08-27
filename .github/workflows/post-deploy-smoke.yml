@@ -1,0 +1,34 @@
+name: Post-deploy smoke test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Check comiker91.de
+    runs-on: [self-hosted, linux, x64, seo]
+    timeout-minutes: 5
+
+    steps:
+      - name: Check homepage
+        shell: bash
+        run: |
+          set -euo pipefail
+          body="$RUNNER_TEMP/comiker91-home.html"
+          code="$(curl --silent --show-error --location --output "$body" --write-out '%{http_code}' --max-time 30 https://comiker91.de/)"
+          echo "Homepage HTTP $code"
+          test "$code" -ge 200
+          test "$code" -lt 400
+          test -s "$body"
+
+      - name: Check REST API
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl --silent --show-error --location --output /dev/null --write-out '%{http_code}' --max-time 20 https://comiker91.de/wp-json/)"
+          echo "REST API HTTP $code"
+          test "$code" -ge 200
+          test "$code" -lt 400

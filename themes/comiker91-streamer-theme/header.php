@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="<?php echo esc_url(get_template_directory_uri() . '/assets/css/enhancements.css?ver=' . C91_VERSION); ?>">
 <?php wp_head(); ?>
+<link rel="stylesheet" href="<?php echo esc_url(get_template_directory_uri() . '/assets/css/mobile-fix.css?ver=2.4.2'); ?>" media="(max-width: 900px)">
 </head>
 <body <?php body_class(); ?>>
 <?php wp_body_open(); ?>

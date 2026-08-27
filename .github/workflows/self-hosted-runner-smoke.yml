@@ -1,0 +1,65 @@
+name: Self-hosted runner smoke test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/self-hosted-runner-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: livingbots-comiker91 smoke test
+    runs-on: [self-hosted, linux, x64, seo]
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify runner basics
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Runner: ${RUNNER_NAME:-unknown}"
+          echo "OS: ${RUNNER_OS:-unknown}"
+          echo "Arch: ${RUNNER_ARCH:-unknown}"
+          uname -a
+          git --version
+          test -d plugins
+          test -d themes
+
+      - name: Inventory deploy toolchain
+        shell: bash
+        run: |
+          set -u
+          missing=0
+          for tool in php zip openssl curl; do
+            if command -v "$tool" >/dev/null 2>&1; then
+              echo "OK: $tool -> $(command -v "$tool")"
+            else
+              echo "MISSING: $tool"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Verify PHP syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          find plugins themes -type f -name '*.php' -print0 | xargs -0 -r -n1 php -l >/dev/null
+          echo "PHP syntax validation passed."
+
+      - name: Verify outbound access to comiker91.de
+        shell: bash
+        run: |
+          set -euo pipefail
+          code="$(curl --silent --show-error --location --output /dev/null --write-out '%{http_code}' --max-time 20 https://comiker91.de/)"
+          echo "comiker91.de returned HTTP $code"
+          test "$code" -ge 200
+          test "$code" -lt 400

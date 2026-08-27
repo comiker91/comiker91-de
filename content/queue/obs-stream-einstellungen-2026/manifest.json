@@ -1,0 +1,25 @@
+{
+  "source_id": "obs-stream-einstellungen-2026-08",
+  "state": "draft",
+  "post_type": "post",
+  "title": "OBS Stream Einstellungen 2026: Twitch & YouTube richtig einstellen",
+  "slug": "obs-stream-einstellungen-2026",
+  "excerpt": "Welche OBS-Einstellungen passen 2026 für Twitch und YouTube? Auflösung, FPS, Bitrate, Encoder und typische Fehler verständlich erklärt.",
+  "author": "comiker91",
+  "categories": ["Streaming"],
+  "tags": ["OBS", "Twitch", "YouTube", "Streaming", "Tutorial"],
+  "seo_title": "OBS Stream Einstellungen 2026: Twitch & YouTube optimal",
+  "meta_description": "OBS Stream Einstellungen 2026: Auflösung, FPS, Bitrate und Encoder für Twitch & YouTube richtig wählen – inklusive Troubleshooting und Praxis-Tipps.",
+  "focus_keyword": "OBS Stream Einstellungen 2026",
+  "canonical": "",
+  "og_title": "OBS Stream Einstellungen 2026: Twitch & YouTube richtig einstellen",
+  "og_description": "Die wichtigsten OBS-Einstellungen für stabile, scharfe Streams: Auflösung, FPS, Bitrate, Encoder und Fehlerbehebung.",
+  "twitter_title": "OBS Stream Einstellungen 2026",
+  "twitter_description": "OBS für Twitch und YouTube sinnvoll einstellen – mit konkreten Startwerten und Troubleshooting.",
+  "schema_page_type": "WebPage",
+  "schema_article_type": "TechArticle",
+  "images": [
+    {"file":"obs-stream-einstellungen-2026.webp","alt":"Streaming-Setup mit OBS Studio und Hinweisen zu wichtigen Stream-Einstellungen 2026","title":"OBS Stream Einstellungen 2026","featured":true},
+    {"file":"obs-studio-einsteiger-guide-2026.webp","alt":"OBS-Studio-Setup für Einsteiger mit Mikrofon, Monitoren und Streaming-Zubehör","title":"OBS Studio Einsteiger-Guide 2026","featured":false}
+  ]
+}

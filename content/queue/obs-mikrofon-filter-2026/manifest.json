@@ -1,0 +1,25 @@
+{
+  "source_id": "obs-mikrofon-filter-2026-08",
+  "state": "draft",
+  "post_type": "post",
+  "title": "OBS Mikrofon Filter 2026: Stimme klar einstellen ohne Rauschen",
+  "slug": "obs-mikrofon-filter-2026",
+  "excerpt": "Welche OBS Mikrofon Filter brauchst du wirklich? Noise Suppression, Expander, Compressor und Limiter verständlich erklärt – inklusive sinnvoller Reihenfolge.",
+  "author": "comiker91",
+  "categories": ["Streaming"],
+  "tags": ["OBS", "Mikrofon", "Audio", "Streaming", "Twitch"],
+  "seo_title": "OBS Mikrofon Filter 2026: Reihenfolge & Einstellungen",
+  "meta_description": "OBS Mikrofon Filter richtig einstellen: Noise Suppression, Expander, Compressor und Limiter in sinnvoller Reihenfolge – mit Startwerten und Praxistipps.",
+  "focus_keyword": "OBS Mikrofon Filter",
+  "canonical": "",
+  "og_title": "OBS Mikrofon Filter 2026: Klarer Stream-Sound ohne Rauschen",
+  "og_description": "Die sinnvolle OBS-Filterkette für deine Stimme: Rauschen reduzieren, Lautstärke kontrollieren und Clipping verhindern.",
+  "twitter_title": "OBS Mikrofon Filter 2026 richtig einstellen",
+  "twitter_description": "Noise Suppression, Expander, Compressor und Limiter verständlich erklärt.",
+  "schema_page_type": "WebPage",
+  "schema_article_type": "TechArticle",
+  "images": [
+    {"file":"obs-mikrofon-filter-2026.webp","alt":"OBS Audio-Mixer und Mikrofon-Setup für klare Stream-Stimme 2026","title":"OBS Mikrofon Filter 2026","featured":true},
+    {"file":"obs-filterkette-mikrofon-2026.webp","alt":"Infografik zur OBS Mikrofon Filterkette mit Noise Suppression, Compressor, Expander und Limiter","title":"OBS Mikrofon Filterkette","featured":false}
+  ]
+}

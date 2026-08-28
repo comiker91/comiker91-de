@@ -1,0 +1,25 @@
+{
+  "source_id": "obs-dropped-frames-beheben-2026-08",
+  "state": "draft",
+  "post_type": "post",
+  "title": "OBS ruckelt? Dropped Frames, Rendering Lag & Encoding Lag beheben",
+  "slug": "obs-dropped-frames-beheben",
+  "excerpt": "OBS ruckelt oder verliert Frames? So unterscheidest du Netzwerk-, Rendering- und Encoding-Probleme und behebst die tatsächliche Ursache.",
+  "author": "comiker91",
+  "categories": ["Streaming"],
+  "tags": ["OBS", "Streaming", "Troubleshooting", "Twitch", "YouTube"],
+  "seo_title": "OBS ruckelt? Dropped Frames & Encoding Lag beheben",
+  "meta_description": "OBS ruckelt oder verliert Frames? Lerne Dropped Frames, Rendering Lag und Encoding Lag zu unterscheiden und behebe die Ursache Schritt für Schritt.",
+  "focus_keyword": "OBS Dropped Frames beheben",
+  "canonical": "",
+  "og_title": "OBS ruckelt? Dropped Frames richtig diagnostizieren",
+  "og_description": "Netzwerk, GPU oder Encoder? Mit dieser Anleitung findest du heraus, warum OBS ruckelt und welche Maßnahme wirklich hilft.",
+  "twitter_title": "OBS Dropped Frames beheben",
+  "twitter_description": "Rendering Lag, Encoding Lag oder Netzwerk? So findest und behebst du die Ursache.",
+  "schema_page_type": "WebPage",
+  "schema_article_type": "TechArticle",
+  "images": [
+    {"file":"obs-dropped-frames-beheben-2026.webp","alt":"OBS Streaming-Setup für die Fehlersuche bei Dropped Frames und Stream-Rucklern","title":"OBS Dropped Frames beheben 2026","featured":true},
+    {"file":"obs-rendering-encoding-lag-2026.webp","alt":"OBS Studio Setup zur Diagnose von Rendering Lag und Encoding Lag","title":"OBS Rendering und Encoding Lag diagnostizieren","featured":false}
+  ]
+}

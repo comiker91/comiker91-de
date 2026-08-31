@@ -5,6 +5,7 @@
 <meta charset="<?php bloginfo('charset'); ?>">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="<?php echo esc_url(get_template_directory_uri() . '/assets/css/enhancements.css?ver=' . C91_VERSION); ?>">
+<link rel="stylesheet" href="<?php echo esc_url(get_template_directory_uri() . '/assets/css/seo.css?ver=' . C91_VERSION); ?>">
 <?php wp_head(); ?>
 <link rel="stylesheet" href="<?php echo esc_url(get_template_directory_uri() . '/assets/css/mobile-fix.css?ver=2.4.2'); ?>" media="(max-width: 900px)">
 </head>
@@ -13,7 +14,7 @@
 <header class="site-header">
   <div class="shell header-inner">
     <a class="brand brand-logo-link" href="<?php echo esc_url(home_url('/')); ?>" aria-label="comiker91 Startseite">
-      <img class="brand-logo-image" src="<?php echo esc_url(get_template_directory_uri() . '/assets/images/logoComiker.png'); ?>" alt="comiker91 Logo" width="auto" height="auto">
+      <img class="brand-logo-image" src="<?php echo esc_url(get_template_directory_uri() . '/assets/images/logoComiker.png'); ?>" alt="comiker91 Logo">
       <span class="brand-copy"><strong>comiker91</strong><small>Gaming · Streams · Community.</small></span>
     </a>
     <button class="menu-toggle" aria-label="Menü öffnen" aria-expanded="false">☰</button>

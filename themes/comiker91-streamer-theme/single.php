@@ -1,6 +1,9 @@
-<?php get_header(); while(have_posts()): the_post(); ?>
+<?php
+$seo_file = get_template_directory() . '/inc/seo.php';
+if (!function_exists('c91_breadcrumbs') && file_exists($seo_file)) require_once $seo_file;
+get_header(); while(have_posts()): the_post(); ?>
 <article class="single-article" itemscope itemtype="https://schema.org/Article">
-  <?php c91_breadcrumbs(); ?>
+  <?php if (function_exists('c91_breadcrumbs')) c91_breadcrumbs(); ?>
   <section class="page-hero article-hero">
     <div class="shell narrow">
       <span class="eyebrow">NEWS • <time datetime="<?php echo esc_attr(get_the_date(DATE_W3C)); ?>" itemprop="datePublished"><?php echo esc_html(get_the_date('d.m.Y')); ?></time> • <?php echo esc_html(c91_reading_time()); ?> MIN. LESEZEIT</span>

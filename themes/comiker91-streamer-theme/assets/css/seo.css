@@ -1,0 +1,8 @@
+.c91-breadcrumbs{padding-top:18px;padding-bottom:8px;font-size:13px;color:#aaa7ba}
+.c91-breadcrumbs ol{display:flex;flex-wrap:wrap;align-items:center;gap:7px;list-style:none;margin:0;padding:0}
+.c91-breadcrumbs li{display:flex;align-items:center;gap:7px;min-width:0}
+.c91-breadcrumbs a{color:#cbb5ef;text-decoration:none}
+.c91-breadcrumbs a:hover{text-decoration:underline}
+.c91-breadcrumbs [aria-current="page"]{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:52ch}
+.article-author{margin:12px 0 0;color:#aaa7ba;font-size:14px}
+@media(max-width:700px){.c91-breadcrumbs{padding-top:12px}.c91-breadcrumbs [aria-current="page"]{max-width:28ch}}

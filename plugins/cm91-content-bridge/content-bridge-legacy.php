@@ -1,9 +1,7 @@
 <?php
 /**
- * Plugin Name: CM91 Content Bridge
- * Description: Imports signed Git content packages as protected WordPress drafts and lets editors attach generated image ZIPs.
- * Version: 0.1.1
- * Author: comiker91
+ * Legacy implementation loaded by cm91-content-bridge.php.
+ * Kept without a WordPress plugin header so it is not registered as a second plugin.
  */
 if (!defined('ABSPATH')) exit;
 final class CM91_Content_Bridge {

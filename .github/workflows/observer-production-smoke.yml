@@ -1,0 +1,36 @@
+name: Observer Production Smoke
+on:
+  push:
+    paths: ['.github/workflows/observer-production-smoke.yml']
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  observer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify invalid token and deploy-secret fallback
+        env:
+          TOKEN: ${{ secrets.CM91_DEPLOY_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$TOKEN"
+          endpoint='https://comiker91.de/?rest_route=/comitement-observer/v1/status'
+          bad=$(curl -sS -o "$RUNNER_TEMP/bad.json" -w '%{http_code}' -H 'X-Comitement-Site-Token: definitely-invalid-observer-token' "$endpoint")
+          test "$bad" = 403
+          code=$(curl -sS -o "$RUNNER_TEMP/good.json" -w '%{http_code}' -H "X-Comitement-Site-Token: $TOKEN" "$endpoint")
+          echo "observer_deploy_secret=$code"
+          if [ "$code" = 200 ]; then
+            python3 - <<'PY'
+          import json, os
+          d=json.load(open(os.path.join(os.environ['RUNNER_TEMP'],'good.json')))
+          assert d.get('ok') is True and d.get('observer_version') == '1.1.0'
+          for k in ('site','theme','plugins','scheduled_posts','cron','updates','issues','auth_source'): assert k in d
+          print('OBSERVER_DEPLOY_SECRET_IS_ACTIVE=yes')
+          PY
+          elif [ "$code" = 403 ]; then
+            echo 'OBSERVER_USES_HIGHER_PRIORITY_CONTENT_SECRET=yes'
+          else
+            exit 1
+          fi

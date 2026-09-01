@@ -1,0 +1,16 @@
+name: Observer Branch Test
+on:
+  push:
+    branches: ['feature/comitement-observer-v1']
+permissions: {contents: read}
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          php -l plugins/cm91-content-bridge/cm91-content-bridge.php
+          php -l plugins/cm91-content-bridge/content-bridge-legacy.php
+          php -l plugins/cm91-content-bridge/comitement-observer.php
+          grep -q "Version: 0.2.0" plugins/cm91-content-bridge/cm91-content-bridge.php
+          grep -q "comitement-observer/v1" plugins/cm91-content-bridge/comitement-observer.php

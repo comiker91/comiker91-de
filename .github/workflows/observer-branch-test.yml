@@ -1,0 +1,34 @@
+name: Observer Branch Test
+on:
+  push:
+    branches: ['feature/comitement-observer-v1']
+  pull_request:
+    branches: [main]
+permissions: {contents: read}
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: PHP lint
+        run: |
+          set -euo pipefail
+          php -l plugins/cm91-content-bridge/cm91-content-bridge.php
+          php -l plugins/cm91-content-bridge/content-bridge-legacy.php
+          php -l plugins/cm91-content-bridge/comitement-observer.php
+          php -l tests/comitement-observer-contract.php
+      - name: Observer contract
+        run: |
+          set -euo pipefail
+          php tests/comitement-observer-contract.php plugins/cm91-content-bridge/comitement-observer.php option
+          php tests/comitement-observer-contract.php plugins/cm91-content-bridge/comitement-observer.php constant
+          grep -q "COMITEMENT_OBSERVER_TOKEN_CONSTANTS" plugins/cm91-content-bridge/cm91-content-bridge.php
+          grep -q "COMITEMENT_OBSERVER_TOKEN_OPTIONS" plugins/cm91-content-bridge/cm91-content-bridge.php
+          grep -q "Version: 0.2.0" plugins/cm91-content-bridge/cm91-content-bridge.php
+      - name: Legacy byte identity
+        run: |
+          set -euo pipefail
+          git show origin/main:plugins/cm91-content-bridge/cm91-content-bridge.php > /tmp/original.php
+          cmp -s /tmp/original.php plugins/cm91-content-bridge/content-bridge-legacy.php
+          echo 'LEGACY_BRIDGE_BYTE_IDENTICAL=yes'

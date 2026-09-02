@@ -1,6 +1,11 @@
 name: Content Dispatch
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'content/queue/**'
   workflow_dispatch:
     inputs:
       package:
@@ -17,7 +22,7 @@ concurrency:
 
 jobs:
   dispatch-draft:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, seo]
     timeout-minutes: 10
     env:
       CONTENT_ENDPOINT: https://comiker91.de/wp-json/cm91-content/v1/import
@@ -25,46 +30,95 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Resolve queue package
-        id: package
+      - name: Resolve queue packages
+        id: packages
         shell: bash
         env:
+          EVENT_NAME: ${{ github.event_name }}
           PACKAGE_INPUT: ${{ inputs.package }}
+          BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          if [[ ! "$PACKAGE_INPUT" =~ ^[a-z0-9][a-z0-9_-]*$ ]]; then
-            echo "Invalid package input. Use a queue directory name containing only lowercase letters, digits, underscore and hyphen." >&2
+          packages_file="$RUNNER_TEMP/cm91-content-packages.txt"
+          : > "$packages_file"
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ ! "$PACKAGE_INPUT" =~ ^[a-z0-9][a-z0-9_-]*$ ]]; then
+              echo "Invalid package input. Use a queue directory name containing only lowercase letters, digits, underscore and hyphen." >&2
+              exit 1
+            fi
+            package_dir="content/queue/$PACKAGE_INPUT"
+            if [[ ! -d "$package_dir" ]]; then
+              echo "Queue package not found: $package_dir" >&2
+              exit 1
+            fi
+            printf '%s\n' "$PACKAGE_INPUT" > "$packages_file"
+          elif [[ "$EVENT_NAME" == "push" ]]; then
+            if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+              echo "Automatic content dispatch is allowed only from main." >&2
+              exit 1
+            fi
+            if [[ -z "$BEFORE_SHA" || "$BEFORE_SHA" =~ ^0+$ ]]; then
+              echo "Missing trustworthy before SHA for main push; refusing automatic dispatch." >&2
+              exit 1
+            fi
+            git cat-file -e "$BEFORE_SHA^{commit}"
+            git cat-file -e "$CURRENT_SHA^{commit}"
+            git diff --name-only --diff-filter=ACMRT "$BEFORE_SHA" "$CURRENT_SHA" -- 'content/queue/**' \
+              | awk -F/ 'NF >= 4 && $1=="content" && $2=="queue" {print $3}' \
+              | grep -E '^[a-z0-9][a-z0-9_-]*$' \
+              | sort -u > "$packages_file" || true
+            if [[ ! -s "$packages_file" ]]; then
+              echo "No added or modified queue package found in this main push; nothing to dispatch."
+            fi
+          else
+            echo "Unsupported event: $EVENT_NAME" >&2
             exit 1
           fi
-          package_dir="content/queue/$PACKAGE_INPUT"
-          if [[ ! -d "$package_dir" ]]; then
-            echo "Queue package not found: $package_dir" >&2
-            exit 1
-          fi
-          printf 'dir=%s\n' "$package_dir" >> "$GITHUB_OUTPUT"
 
-      - name: Validate draft package
-        shell: bash
-        run: php scripts/validate-content-package.php "${{ steps.package.outputs.dir }}"
+          while IFS= read -r package; do
+            [[ -n "$package" ]] || continue
+            package_dir="content/queue/$package"
+            if [[ ! -d "$package_dir" ]]; then
+              echo "Changed queue package no longer exists at HEAD: $package_dir" >&2
+              exit 1
+            fi
+          done < "$packages_file"
 
-      - name: Enforce draft-only manifest
+          printf 'file=%s\n' "$packages_file" >> "$GITHUB_OUTPUT"
+          echo "Resolved queue packages:"
+          sed 's/^/- /' "$packages_file"
+
+      - name: Validate changed draft packages
         shell: bash
         env:
-          PACKAGE_DIR: ${{ steps.package.outputs.dir }}
+          PACKAGES_FILE: ${{ steps.packages.outputs.file }}
         run: |
           set -euo pipefail
-          php -r '
-            $m=json_decode(file_get_contents($argv[1]."/manifest.json"),true);
-            if(!is_array($m)){fwrite(STDERR,"Invalid manifest JSON\n");exit(1);}
-            if(($m["state"]??"draft")!=="draft"){fwrite(STDERR,"Only state=draft is allowed\n");exit(1);}
-            if(isset($m["post_status"])&&$m["post_status"]!=="draft"){fwrite(STDERR,"post_status may only be draft\n");exit(1);}
-          ' "$PACKAGE_DIR"
+          while IFS= read -r package; do
+            [[ -n "$package" ]] || continue
+            package_dir="content/queue/$package"
+            php scripts/validate-content-package.php "$package_dir"
+            php -r '
+              $m=json_decode(file_get_contents($argv[1]."/manifest.json"),true);
+              if(!is_array($m)){fwrite(STDERR,"Invalid manifest JSON\n");exit(1);}
+              if(($m["state"]??"draft")!=="draft"){fwrite(STDERR,"Only state=draft is allowed\n");exit(1);}
+              if(isset($m["post_status"])&&$m["post_status"]!=="draft"){fwrite(STDERR,"post_status may only be draft\n");exit(1);}
+            ' "$package_dir"
+          done < "$PACKAGES_FILE"
 
       - name: Check Content Bridge health
+        if: ${{ hashFiles('content/queue/**/manifest.json') != '' }}
         shell: bash
+        env:
+          PACKAGES_FILE: ${{ steps.packages.outputs.file }}
         run: |
           set -euo pipefail
+          [[ -s "$PACKAGES_FILE" ]] || exit 0
           health="$(curl --fail-with-body --silent --show-error --max-time 20 "$CONTENT_HEALTH")"
           HEALTH="$health" php -r '
             $h=json_decode(getenv("HEALTH"),true);
@@ -74,71 +128,69 @@ jobs:
             echo "Content Bridge health contract OK; draft-only protection confirmed.\n";
           '
 
-      - name: Build signed content package
-        id: build
+      - name: Import changed packages through existing CM91 Content Bridge
         shell: bash
         env:
-          PACKAGE_DIR: ${{ steps.package.outputs.dir }}
+          PACKAGES_FILE: ${{ steps.packages.outputs.file }}
           CONTENT_SECRET: ${{ secrets.CM91_CONTENT_SECRET }}
           DEPLOY_SECRET: ${{ secrets.CM91_DEPLOY_SECRET }}
         run: |
           set -euo pipefail
+          [[ -s "$PACKAGES_FILE" ]] || exit 0
           secret="$CONTENT_SECRET"
           if [[ -z "$secret" ]]; then secret="$DEPLOY_SECRET"; fi
           if [[ -z "$secret" ]]; then
             echo "Neither CM91_CONTENT_SECRET nor CM91_DEPLOY_SECRET is configured for content signing." >&2
             exit 1
           fi
-          archive="$RUNNER_TEMP/cm91-content-package.zip"
-          parent="$(dirname "$PACKAGE_DIR")"
-          name="$(basename "$PACKAGE_DIR")"
-          (cd "$parent" && zip -q -r "$archive" "$name")
-          signature="sha256=$(openssl dgst -sha256 -hmac "$secret" -binary "$archive" | xxd -p -c 256)"
-          echo "signature=$signature" >> "$GITHUB_OUTPUT"
-          echo "archive=$archive" >> "$GITHUB_OUTPUT"
-          echo "Content package built and signed; secret and signature are not printed."
 
-      - name: Import through existing CM91 Content Bridge
-        id: import
-        shell: bash
-        env:
-          SIGNATURE: ${{ steps.build.outputs.signature }}
-          ARCHIVE: ${{ steps.build.outputs.archive }}
-        run: |
-          set -euo pipefail
-          response="$RUNNER_TEMP/cm91-content-response.json"
-          code="$(curl --silent --show-error --max-time 60 \
-            --output "$response" --write-out '%{http_code}' \
-            -H "X-CM91-Deploy-Signature: $SIGNATURE" \
-            -H "X-CM91-Commit: $GITHUB_SHA" \
-            -F "package=@$ARCHIVE;type=application/zip" \
-            "$CONTENT_ENDPOINT")"
-          if [[ "$code" != "200" && "$code" != "422" ]]; then
-            echo "Content Bridge returned HTTP $code." >&2
-            cat "$response" >&2
-            exit 1
-          fi
-          RESPONSE_FILE="$response" php -r '
-            $r=json_decode(file_get_contents(getenv("RESPONSE_FILE")),true);
-            if(!is_array($r)){fwrite(STDERR,"Invalid Content Bridge response.\n");exit(1);}
-            foreach(($r["posts"]??[]) as $p){
-              $a=(string)($p["action"]??""); $s=(string)($p["status"]??""); $id=(int)($p["post_id"]??0); $src=(string)($p["source_id"]??"");
-              if(!in_array($a,["created_draft","updated_draft","skipped_protected_status"],true)){fwrite(STDERR,"Unexpected import action.\n");exit(1);}
-              if(in_array($a,["created_draft","updated_draft"],true)&&$s!=="draft"){fwrite(STDERR,"Draft invariant violated.\n");exit(1);}
-              echo "$a source_id=$src post_id=$id status=$s\n";
-            }
-            foreach(($r["errors"]??[]) as $e){fwrite(STDERR,"import_error source_id=".($e["source_id"]??"")." stage=".($e["stage"]??"")." message=".($e["message"]??"")."\n");}
-            if(empty($r["ok"])) exit(1);
-          '
+          while IFS= read -r package; do
+            [[ -n "$package" ]] || continue
+            package_dir="content/queue/$package"
+            archive="$RUNNER_TEMP/cm91-content-${package}.zip"
+            parent="$(dirname "$package_dir")"
+            name="$(basename "$package_dir")"
+            (cd "$parent" && zip -q -r "$archive" "$name")
+            signature="sha256=$(openssl dgst -sha256 -hmac "$secret" -binary "$archive" | xxd -p -c 256)"
+            response="$RUNNER_TEMP/cm91-content-${package}-response.json"
+            code="$(curl --silent --show-error --max-time 60 \
+              --output "$response" --write-out '%{http_code}' \
+              -H "X-CM91-Deploy-Signature: $signature" \
+              -H "X-CM91-Commit: $GITHUB_SHA" \
+              -F "package=@$archive;type=application/zip" \
+              "$CONTENT_ENDPOINT")"
+            if [[ "$code" != "200" && "$code" != "422" ]]; then
+              echo "Content Bridge returned HTTP $code for package $package." >&2
+              cat "$response" >&2
+              exit 1
+            fi
+            PACKAGE="$package" RESPONSE_FILE="$response" php -r '
+              $r=json_decode(file_get_contents(getenv("RESPONSE_FILE")),true);
+              if(!is_array($r)){fwrite(STDERR,"Invalid Content Bridge response.\n");exit(1);}
+              foreach(($r["posts"]??[]) as $p){
+                $a=(string)($p["action"]??""); $s=(string)($p["status"]??""); $id=(int)($p["post_id"]??0); $src=(string)($p["source_id"]??"");
+                if(!in_array($a,["created_draft","updated_draft","skipped_protected_status"],true)){fwrite(STDERR,"Unexpected import action.\n");exit(1);}
+                if(in_array($a,["created_draft","updated_draft"],true)&&$s!=="draft"){fwrite(STDERR,"Draft invariant violated.\n");exit(1);}
+                echo "$a source_id=$src post_id=$id status=$s\n";
+              }
+              foreach(($r["errors"]??[]) as $e){fwrite(STDERR,"import_error source_id=".($e["source_id"]??"")." stage=".($e["stage"]??"")." message=".($e["message"]??"")."\n");}
+              if(empty($r["ok"])) exit(1);
+            '
+          done < "$PACKAGES_FILE"
 
       - name: Summary
         if: always()
         shell: bash
+        env:
+          PACKAGES_FILE: ${{ steps.packages.outputs.file }}
         run: |
           {
             echo "### CM91 Content Dispatch"
-            echo "- Queue package: \`${{ inputs.package }}\`"
+            echo "- Trigger: \`${{ github.event_name }}\`"
+            echo "- Runner: self-hosted SEO worker"
             echo "- Import target: existing CM91 Content Bridge"
             echo "- Allowed write state: **draft only**"
             echo "- Published/non-draft matches: protected by the bridge"
+            echo "- Queue packages selected from this main push/manual input only:"
+            if [[ -f "$PACKAGES_FILE" && -s "$PACKAGES_FILE" ]]; then sed 's/^/  - `/' "$PACKAGES_FILE" | sed 's/$/`/'; else echo "  - none"; fi
           } >> "$GITHUB_STEP_SUMMARY"

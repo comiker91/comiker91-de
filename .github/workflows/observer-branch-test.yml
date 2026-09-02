@@ -29,6 +29,9 @@ jobs:
       - name: Legacy byte identity
         run: |
           set -euo pipefail
-          git show origin/main:plugins/cm91-content-bridge/cm91-content-bridge.php > /tmp/original.php
-          cmp -s /tmp/original.php plugins/cm91-content-bridge/content-bridge-legacy.php
+          # The protected implementation lives in content-bridge-legacy.php since the
+          # observer split. Compare that file byte-for-byte with main so unrelated PRs
+          # cannot silently modify the draft/import contract.
+          git show origin/main:plugins/cm91-content-bridge/content-bridge-legacy.php > /tmp/original-legacy.php
+          cmp -s /tmp/original-legacy.php plugins/cm91-content-bridge/content-bridge-legacy.php
           echo 'LEGACY_BRIDGE_BYTE_IDENTICAL=yes'

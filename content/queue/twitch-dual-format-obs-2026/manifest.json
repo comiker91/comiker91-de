@@ -1,0 +1,24 @@
+{
+  "source_id": "twitch-dual-format-obs-2026-09",
+  "state": "draft",
+  "post_type": "post",
+  "title": "Twitch Dual Format 2026: Vertikal und horizontal mit OBS streamen",
+  "slug": "twitch-dual-format-obs-2026",
+  "excerpt": "Twitch Dual Format bringt Hoch- und Querformat in einen Stream. So funktioniert das 2026 mit Enhanced Broadcasting, OBS und Aitum Vertical.",
+  "author": "comiker91",
+  "categories": ["Streaming"],
+  "tags": ["Twitch", "OBS", "Dual Format", "Vertical Streaming", "Aitum Vertical"],
+  "seo_title": "Twitch Dual Format 2026: Vertikal mit OBS streamen",
+  "meta_description": "Twitch Dual Format 2026 erklärt: So streamst du mit OBS horizontal und vertikal, nutzt Enhanced Broadcasting und richtest Aitum Vertical sinnvoll ein.",
+  "focus_keyword": "Twitch Dual Format 2026",
+  "canonical": "",
+  "og_title": "Twitch Dual Format 2026: Vertikal und horizontal streamen",
+  "og_description": "Was Twitch Dual Format bringt und wie du OBS, Enhanced Broadcasting und Aitum Vertical für Hoch- und Querformat sinnvoll vorbereitest.",
+  "twitter_title": "Twitch Dual Format 2026 mit OBS",
+  "twitter_description": "Hochformat plus Querformat: Twitch Dual Format, Enhanced Broadcasting und Aitum Vertical verständlich erklärt.",
+  "schema_page_type": "WebPage",
+  "schema_article_type": "TechArticle",
+  "images": [
+    {"file":"twitch-dual-format-obs-2026.webp","alt":"Streamer-Schreibtisch mit OBS-Setup für Twitch Dual Format 2026","title":"Twitch Dual Format 2026 mit OBS","featured":true}
+  ]
+}

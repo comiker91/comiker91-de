@@ -18,6 +18,7 @@ jobs:
           php -l plugins/cm91-content-bridge/content-bridge-legacy.php
           php -l plugins/cm91-content-bridge/comitement-observer.php
           php -l tests/comitement-observer-contract.php
+          php -l tests/test-content-dispatch.php
       - name: Observer contract
         run: |
           set -euo pipefail
@@ -26,9 +27,16 @@ jobs:
           grep -q "COMITEMENT_OBSERVER_TOKEN_CONSTANTS" plugins/cm91-content-bridge/cm91-content-bridge.php
           grep -q "COMITEMENT_OBSERVER_TOKEN_OPTIONS" plugins/cm91-content-bridge/cm91-content-bridge.php
           grep -q "Version: 0.2.0" plugins/cm91-content-bridge/cm91-content-bridge.php
+      - name: Content dispatch safety contract
+        run: |
+          set -euo pipefail
+          php tests/test-content-dispatch.php
       - name: Legacy byte identity
         run: |
           set -euo pipefail
-          git show origin/main:plugins/cm91-content-bridge/cm91-content-bridge.php > /tmp/original.php
-          cmp -s /tmp/original.php plugins/cm91-content-bridge/content-bridge-legacy.php
+          # The protected implementation lives in content-bridge-legacy.php since the
+          # observer split. Compare that file byte-for-byte with main so unrelated PRs
+          # cannot silently modify the draft/import contract.
+          git show origin/main:plugins/cm91-content-bridge/content-bridge-legacy.php > /tmp/original-legacy.php
+          cmp -s /tmp/original-legacy.php plugins/cm91-content-bridge/content-bridge-legacy.php
           echo 'LEGACY_BRIDGE_BYTE_IDENTICAL=yes'

@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   dispatch-draft:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, seo]
     timeout-minutes: 10
     env:
       CONTENT_ENDPOINT: https://comiker91.de/wp-json/cm91-content/v1/import
@@ -187,6 +187,7 @@ jobs:
           {
             echo "### CM91 Content Dispatch"
             echo "- Trigger: \`${{ github.event_name }}\`"
+            echo "- Runner: self-hosted SEO worker"
             echo "- Import target: existing CM91 Content Bridge"
             echo "- Allowed write state: **draft only**"
             echo "- Published/non-draft matches: protected by the bridge"

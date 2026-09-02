@@ -1,0 +1,144 @@
+name: Content Dispatch
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Queue package directory name under content/queue (for example obs-stream-einstellungen-2026)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cm91-content-dispatch
+  cancel-in-progress: false
+
+jobs:
+  dispatch-draft:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CONTENT_ENDPOINT: https://comiker91.de/wp-json/cm91-content/v1/import
+      CONTENT_HEALTH: https://comiker91.de/wp-json/cm91-content/v1/health
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve queue package
+        id: package
+        shell: bash
+        env:
+          PACKAGE_INPUT: ${{ inputs.package }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$PACKAGE_INPUT" =~ ^[a-z0-9][a-z0-9_-]*$ ]]; then
+            echo "Invalid package input. Use a queue directory name containing only lowercase letters, digits, underscore and hyphen." >&2
+            exit 1
+          fi
+          package_dir="content/queue/$PACKAGE_INPUT"
+          if [[ ! -d "$package_dir" ]]; then
+            echo "Queue package not found: $package_dir" >&2
+            exit 1
+          fi
+          printf 'dir=%s\n' "$package_dir" >> "$GITHUB_OUTPUT"
+
+      - name: Validate draft package
+        shell: bash
+        run: php scripts/validate-content-package.php "${{ steps.package.outputs.dir }}"
+
+      - name: Enforce draft-only manifest
+        shell: bash
+        env:
+          PACKAGE_DIR: ${{ steps.package.outputs.dir }}
+        run: |
+          set -euo pipefail
+          php -r '
+            $m=json_decode(file_get_contents($argv[1]."/manifest.json"),true);
+            if(!is_array($m)){fwrite(STDERR,"Invalid manifest JSON\n");exit(1);}
+            if(($m["state"]??"draft")!=="draft"){fwrite(STDERR,"Only state=draft is allowed\n");exit(1);}
+            if(isset($m["post_status"])&&$m["post_status"]!=="draft"){fwrite(STDERR,"post_status may only be draft\n");exit(1);}
+          ' "$PACKAGE_DIR"
+
+      - name: Check Content Bridge health
+        shell: bash
+        run: |
+          set -euo pipefail
+          health="$(curl --fail-with-body --silent --show-error --max-time 20 "$CONTENT_HEALTH")"
+          HEALTH="$health" php -r '
+            $h=json_decode(getenv("HEALTH"),true);
+            if(!is_array($h)||empty($h["ok"])||empty($h["draft_only"])||empty($h["non_draft_updates_blocked"])||empty($h["source_id_only_matching"])){
+              fwrite(STDERR,"Content Bridge health contract is not safe for draft dispatch.\n");exit(1);
+            }
+            echo "Content Bridge health contract OK; draft-only protection confirmed.\n";
+          '
+
+      - name: Build signed content package
+        id: build
+        shell: bash
+        env:
+          PACKAGE_DIR: ${{ steps.package.outputs.dir }}
+          CONTENT_SECRET: ${{ secrets.CM91_CONTENT_SECRET }}
+          DEPLOY_SECRET: ${{ secrets.CM91_DEPLOY_SECRET }}
+        run: |
+          set -euo pipefail
+          secret="$CONTENT_SECRET"
+          if [[ -z "$secret" ]]; then secret="$DEPLOY_SECRET"; fi
+          if [[ -z "$secret" ]]; then
+            echo "Neither CM91_CONTENT_SECRET nor CM91_DEPLOY_SECRET is configured for content signing." >&2
+            exit 1
+          fi
+          archive="$RUNNER_TEMP/cm91-content-package.zip"
+          parent="$(dirname "$PACKAGE_DIR")"
+          name="$(basename "$PACKAGE_DIR")"
+          (cd "$parent" && zip -q -r "$archive" "$name")
+          signature="sha256=$(openssl dgst -sha256 -hmac "$secret" -binary "$archive" | xxd -p -c 256)"
+          echo "signature=$signature" >> "$GITHUB_OUTPUT"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
+          echo "Content package built and signed; secret and signature are not printed."
+
+      - name: Import through existing CM91 Content Bridge
+        id: import
+        shell: bash
+        env:
+          SIGNATURE: ${{ steps.build.outputs.signature }}
+          ARCHIVE: ${{ steps.build.outputs.archive }}
+        run: |
+          set -euo pipefail
+          response="$RUNNER_TEMP/cm91-content-response.json"
+          code="$(curl --silent --show-error --max-time 60 \
+            --output "$response" --write-out '%{http_code}' \
+            -H "X-CM91-Deploy-Signature: $SIGNATURE" \
+            -H "X-CM91-Commit: $GITHUB_SHA" \
+            -F "package=@$ARCHIVE;type=application/zip" \
+            "$CONTENT_ENDPOINT")"
+          if [[ "$code" != "200" && "$code" != "422" ]]; then
+            echo "Content Bridge returned HTTP $code." >&2
+            cat "$response" >&2
+            exit 1
+          fi
+          RESPONSE_FILE="$response" php -r '
+            $r=json_decode(file_get_contents(getenv("RESPONSE_FILE")),true);
+            if(!is_array($r)){fwrite(STDERR,"Invalid Content Bridge response.\n");exit(1);}
+            foreach(($r["posts"]??[]) as $p){
+              $a=(string)($p["action"]??""); $s=(string)($p["status"]??""); $id=(int)($p["post_id"]??0); $src=(string)($p["source_id"]??"");
+              if(!in_array($a,["created_draft","updated_draft","skipped_protected_status"],true)){fwrite(STDERR,"Unexpected import action.\n");exit(1);}
+              if(in_array($a,["created_draft","updated_draft"],true)&&$s!=="draft"){fwrite(STDERR,"Draft invariant violated.\n");exit(1);}
+              echo "$a source_id=$src post_id=$id status=$s\n";
+            }
+            foreach(($r["errors"]??[]) as $e){fwrite(STDERR,"import_error source_id=".($e["source_id"]??"")." stage=".($e["stage"]??"")." message=".($e["message"]??"")."\n");}
+            if(empty($r["ok"])) exit(1);
+          '
+
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### CM91 Content Dispatch"
+            echo "- Queue package: \`${{ inputs.package }}\`"
+            echo "- Import target: existing CM91 Content Bridge"
+            echo "- Allowed write state: **draft only**"
+            echo "- Published/non-draft matches: protected by the bridge"
+          } >> "$GITHUB_STEP_SUMMARY"

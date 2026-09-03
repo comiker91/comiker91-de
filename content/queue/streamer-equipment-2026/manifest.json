@@ -1,0 +1,25 @@
+{
+  "source_id": "streamer-equipment-2026-09",
+  "state": "draft",
+  "post_type": "post",
+  "title": "Streamer Equipment 2026: Was du für Twitch & Co. wirklich brauchst",
+  "slug": "streamer-equipment-2026",
+  "excerpt": "Welches Streamer Equipment brauchst du 2026 wirklich? Mikrofon, Kamera, Licht, Capture Card und Zubehör sinnvoll priorisiert – ohne unnötige Einkaufsliste.",
+  "author": "comiker91",
+  "categories": ["Streaming"],
+  "tags": ["Streaming", "Streamer Equipment", "Twitch", "OBS", "Streaming Setup"],
+  "seo_title": "Streamer Equipment 2026: Setup für Twitch & Streaming",
+  "meta_description": "Streamer Equipment 2026: Mikrofon, Kamera, Licht, Capture Card und Zubehör sinnvoll auswählen. So baust du dein Streaming-Setup Schritt für Schritt auf.",
+  "focus_keyword": "Streamer Equipment 2026",
+  "canonical": "",
+  "og_title": "Streamer Equipment 2026: Was du wirklich brauchst",
+  "og_description": "Mikrofon, Kamera, Licht und Zubehör: So priorisierst du dein Streaming-Setup sinnvoll und vermeidest unnötige Käufe.",
+  "twitter_title": "Streamer Equipment 2026: Die sinnvolle Setup-Checkliste",
+  "twitter_description": "Welches Equipment verbessert deinen Stream wirklich? Ein praxisnaher Guide für Ton, Kamera, Licht, OBS und Zubehör.",
+  "schema_page_type": "WebPage",
+  "schema_article_type": "TechArticle",
+  "images": [
+    {"file":"streamer-equipment-2026-featured.webp","alt":"Modernes Streaming-Setup mit Mikrofon, Kamera, Licht und Monitoren","title":"Streamer Equipment 2026","featured":true},
+    {"file":"streaming-setup-mikrofon-kamera-licht-2026.webp","alt":"Streaming-Arbeitsplatz mit Mikrofon, Kamera, Beleuchtung und OBS-Monitor","title":"Streaming Setup mit Mikrofon, Kamera und Licht","featured":false}
+  ]
+}

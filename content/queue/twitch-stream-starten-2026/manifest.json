@@ -1,0 +1,25 @@
+{
+  "source_id": "twitch-stream-starten-2026-09",
+  "state": "draft",
+  "post_type": "post",
+  "title": "Auf Twitch streamen 2026: Anleitung für Anfänger",
+  "slug": "twitch-stream-starten-2026",
+  "excerpt": "Du willst 2026 auf Twitch streamen? Dieser Einsteiger-Guide führt dich von Kanal, OBS und Audio bis zum ersten Stream, Community-Aufbau und sinnvoller Auswertung.",
+  "author": "comiker91",
+  "categories": ["Streaming"],
+  "tags": ["Twitch", "Streaming", "OBS", "Streamer Anfänger", "Twitch Guide"],
+  "seo_title": "Auf Twitch streamen 2026: Anleitung für Anfänger",
+  "meta_description": "Auf Twitch streamen 2026: So startest du als Anfänger mit OBS, gutem Ton, sinnvoller Technik, ersten Streams und Community-Aufbau.",
+  "focus_keyword": "auf Twitch streamen 2026",
+  "canonical": "",
+  "og_title": "Auf Twitch streamen 2026: Der Einsteiger-Guide",
+  "og_description": "Von OBS und Mikrofon bis Community und ersten Zuschauern: So bereitest du deinen Twitch-Start 2026 sinnvoll vor.",
+  "twitter_title": "Auf Twitch streamen 2026: So startest du",
+  "twitter_description": "Der praxisnahe Twitch-Guide für Anfänger: Setup, OBS, Audio, Teststream, Community und Wachstum.",
+  "schema_page_type": "WebPage",
+  "schema_article_type": "TechArticle",
+  "images": [
+    {"file":"twitch-stream-starten-2026-featured.webp","alt":"Modernes Twitch-Streaming-Setup mit Monitoren, Mikrofon und Beleuchtung","title":"Auf Twitch streamen 2026","featured":true},
+    {"file":"twitch-stream-planung-community-technik-2026.webp","alt":"Streaming-Setup mit visuellen Bereichen für Planung, Community und Technik","title":"Twitch Stream planen: Community und Technik","featured":false}
+  ]
+}

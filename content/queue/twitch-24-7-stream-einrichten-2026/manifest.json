@@ -1,0 +1,25 @@
+{
+  "source_id": "twitch-24-7-stream-einrichten-2026-09",
+  "state": "draft",
+  "post_type": "post",
+  "title": "24/7 Twitch Stream einrichten 2026: OBS, Autostart und Stabilität",
+  "slug": "twitch-24-7-stream-einrichten-2026",
+  "excerpt": "Ein Twitch-Stream soll dauerhaft oder über sehr lange Zeit stabil laufen? Dieser Guide zeigt, wie du OBS, Autostart, Browserquellen, Monitoring und Neustarts sinnvoll planst.",
+  "author": "comiker91",
+  "categories": ["Streaming"],
+  "tags": ["Twitch", "OBS", "24/7 Stream", "Autostart", "Streaming Setup"],
+  "seo_title": "24/7 Twitch Stream einrichten 2026: OBS & Autostart",
+  "meta_description": "24/7 Twitch Stream einrichten: OBS, Autostart, Browserquellen, Monitoring und Neustarts so planen, dass dein Dauerstream 2026 stabiler läuft.",
+  "focus_keyword": "24/7 Twitch Stream einrichten",
+  "canonical": "https://comiker91.de/twitch-24-7-stream-einrichten-2026/",
+  "og_title": "24/7 Twitch Stream einrichten 2026: Stabil statt kompliziert",
+  "og_description": "Praxis-Guide für dauerhafte Twitch-Streams: OBS, Autostart, Browserquellen, Monitoring, Remote-Zugriff und geplante Neustarts.",
+  "twitter_title": "24/7 Twitch Stream einrichten 2026",
+  "twitter_description": "OBS, Autostart, Browserquellen, Monitoring und Neustarts für einen stabilen Dauerstream sinnvoll aufbauen.",
+  "schema_page_type": "WebPage",
+  "schema_article_type": "TechArticle",
+  "images": [
+    {"file":"twitch-24-7-stream-einrichten-2026-featured.webp","alt":"Streaming-Arbeitsplatz mit OBS und Monitoring für einen 24/7 Twitch Stream","title":"24/7 Twitch Stream einrichten 2026","featured":true},
+    {"file":"twitch-24-7-stream-monitoring-autostart-2026.webp","alt":"Streaming-System mit mehreren Monitoren für OBS Autostart und 24/7 Monitoring","title":"24/7 Stream Monitoring und Autostart","featured":false}
+  ]
+}

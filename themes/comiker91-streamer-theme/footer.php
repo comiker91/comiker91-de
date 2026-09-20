@@ -23,7 +23,7 @@
       </div>
     </div>
   </div>
-  <div class="shell footer-bottom"><span>© <?php echo esc_html(date('Y')); ?> comiker91 / Comitement</span><span>Live. Gaming. Community.</span></div>
+  <div class="shell footer-bottom"><span>© <?php echo esc_html(date('Y')); ?> comiker91 / <a href="https://comitement.de/">Comitement</a></span><span>Live. Gaming. Community.</span></div>
 </footer>
 <?php wp_footer(); ?>
 </body></html>

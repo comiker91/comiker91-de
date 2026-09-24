@@ -2,7 +2,7 @@
 if(!defined('ABSPATH')) exit;
 if(!class_exists('Comitement_Site_Observer_V1')){
 final class Comitement_Site_Observer_V1{
- const VERSION='1.1.0'; const NS='comitement-observer/v1';
+ const VERSION='1.2.0'; const NS='comitement-observer/v1';
  static function site_id(){return defined('COMITEMENT_OBSERVER_SITE_ID')?(string)COMITEMENT_OBSERVER_SITE_ID:sanitize_key(parse_url(home_url('/'),PHP_URL_HOST));}
  static function site_name(){return defined('COMITEMENT_OBSERVER_SITE_NAME')?(string)COMITEMENT_OBSERVER_SITE_NAME:get_bloginfo('name');}
  static function token_source():array{
@@ -24,7 +24,45 @@ final class Comitement_Site_Observer_V1{
   update_option($key,$new,false); return ['ok'=>true,'source_type'=>'option','source_key'=>$key,'old'=>$old,'new'=>$new];
  }
  static function init(){add_action('rest_api_init',[__CLASS__,'routes']);add_action('admin_menu',[__CLASS__,'menu']);add_action('admin_post_comitement_observer_rotate',[__CLASS__,'rotate']);}
- static function routes(){register_rest_route(self::NS,'/status',['methods'=>'GET','callback'=>[__CLASS__,'status'],'permission_callback'=>[__CLASS__,'allowed']]);}
+ static function routes(){
+  register_rest_route(self::NS,'/status',['methods'=>'GET','callback'=>[__CLASS__,'status_with_core'],'permission_callback'=>[__CLASS__,'allowed']]);
+  register_rest_route(self::NS,'/core-update',['methods'=>'POST','callback'=>[__CLASS__,'core_update'],'permission_callback'=>[__CLASS__,'allowed']]);
+ }
+ static function installed_wordpress_version(){$v='';$file=ABSPATH.WPINC.'/version.php';if(is_readable($file)){include $file;$v=(string)($wp_version??'');}return$v!==''?$v:(string)get_bloginfo('version');}
+ static function core_update_offer(){
+  if(defined('DISALLOW_FILE_MODS')&&DISALLOW_FILE_MODS)return null;
+  require_once ABSPATH.'wp-admin/includes/update.php';
+  $updates=get_core_updates(['dismissed'=>false]);if(!is_array($updates))return null;$current=self::installed_wordpress_version();
+  foreach($updates as$u){if(!is_object($u))continue;$response=(string)($u->response??'');$version=(string)($u->current??$u->version??'');if(in_array($response,['upgrade','autoupdate'],true)&&$version!==''&&version_compare($version,$current,'>'))return$u;}
+  return null;
+ }
+ static function core_update_state(){
+  $u=self::core_update_offer();$current=self::installed_wordpress_version();$target=$u?(string)($u->current??$u->version??''):'';
+  return['update_available'=>(bool)$u,'current_version'=>$current,'available_version'=>$target];
+ }
+ static function status_with_core(){
+  $r=self::status();$data=$r instanceof WP_REST_Response?$r->get_data():(is_array($r)?$r:[]);
+  $core=self::core_update_state();$data['capabilities']=array_merge((array)($data['capabilities']??[]),['core_update'=>true]);$actions=(array)($data['actions']??[]);if(!in_array('core_update',$actions,true))$actions[]='core_update';$data['actions']=$actions;
+  if(!isset($data['updates'])||!is_array($data['updates']))$data['updates']=[];$data['updates']['core']=$core;
+  return rest_ensure_response($data);
+ }
+ static function core_update(WP_REST_Request$r){
+  if((string)$r->get_header('x-comitement-confirm')!=='core-update')return new WP_Error('comitement_core_confirmation','Explicit core-update confirmation missing.',['status'=>409]);
+  if(defined('DISALLOW_FILE_MODS')&&DISALLOW_FILE_MODS)return new WP_Error('comitement_core_file_mods_disabled','WordPress file modifications are disabled.',['status'=>409]);
+  if(get_transient('comitement_observer_core_update_lock'))return new WP_Error('comitement_core_update_locked','A WordPress Core update is already running.',['status'=>409]);
+  $offer=self::core_update_offer();if(!$offer)return new WP_Error('comitement_core_current','No WordPress Core update is currently available.',['status'=>409]);
+  $target=(string)($offer->current??$offer->version??'');$body=$r->get_json_params();$requested=is_array($body)?trim((string)($body['target_version']??'')):'';
+  if($requested!==''&&$target!==''&&!hash_equals($target,$requested))return new WP_Error('comitement_core_target_changed','The available WordPress Core target changed. Refresh Fleet before updating.',['status'=>409,'available_version'=>$target]);
+  $before=self::installed_wordpress_version();set_transient('comitement_observer_core_update_lock',['started_at'=>time(),'from'=>$before,'to'=>$target],10*MINUTE_IN_SECONDS);
+  try{
+   require_once ABSPATH.'wp-admin/includes/file.php';require_once ABSPATH.'wp-admin/includes/class-wp-upgrader.php';
+   $skin=new Automatic_Upgrader_Skin();$upgrader=new Core_Upgrader($skin);$result=$upgrader->upgrade($offer,['allow_relaxed_file_ownership'=>true]);
+   if(is_wp_error($result))return$result;if($result===false)return new WP_Error('comitement_core_update_failed','WordPress Core upgrader returned no successful result.',['status'=>500]);
+   if(function_exists('wp_clean_update_cache'))wp_clean_update_cache();$after=self::installed_wordpress_version();
+   if($target!==''&&version_compare($after,$target,'<'))return new WP_Error('comitement_core_update_unverified','Core files were processed, but the installed version could not be verified.',['status'=>500,'before_version'=>$before,'after_version'=>$after,'target_version'=>$target]);
+   return rest_ensure_response(['ok'=>true,'before_version'=>$before,'after_version'=>$after,'target_version'=>$target]);
+  }finally{delete_transient('comitement_observer_core_update_lock');}
+ }
  static function menu(){add_management_page('Comitement Observer','Comitement Observer','manage_options','comitement-observer',[__CLASS__,'page']);}
  static function rotate(){if(!current_user_can('manage_options'))wp_die('Nicht erlaubt.');check_admin_referer('comitement_observer_rotate');$r=self::rotate_active_source();$args=is_wp_error($r)?['rotate_error'=>$r->get_error_code()]:['rotated'=>1];wp_safe_redirect(add_query_arg($args,admin_url('tools.php?page=comitement-observer')));exit;}
  static function page(){if(!current_user_can('manage_options'))return;$s=self::token_source();$t=(string)$s['value'];echo'<div class="wrap"><h1>Comitement Observer</h1><p>Read-only Statusschnittstelle für den privaten Comitement Hub.</p><table class="widefat striped" style="max-width:1000px"><tbody><tr><th>Website</th><td>'.esc_html(self::site_name()).'</td></tr><tr><th>Endpoint</th><td><code>'.esc_html(rest_url(self::NS.'/status')).'</code></td></tr><tr><th>Aktive Token-Quelle</th><td><code>'.esc_html(($s['type']??'').':'.($s['key']??'')).'</code></td></tr><tr><th>Site Token</th><td><code style="word-break:break-all">'.esc_html($t).'</code></td></tr></tbody></table>';if(!empty($s['rotatable']))echo'<p><a class="button" href="'.esc_url(wp_nonce_url(admin_url('admin-post.php?action=comitement_observer_rotate'),'comitement_observer_rotate')).'">Aktiven Observer-Token rotieren</a></p>';else echo'<p><strong>Rotation gesperrt:</strong> Der aktive Token wird durch eine Server-/PHP-Konstante bereitgestellt und muss dort geändert werden.</p>';echo'</div>';}

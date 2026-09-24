@@ -1,0 +1,44 @@
+{
+  "source_id": "twitch-2k-streaming-1440p-2026-09",
+  "state": "draft",
+  "post_type": "post",
+  "title": "Twitch 2K Streaming 2026: 1440p, HEVC und 9 Mbit/s erklärt",
+  "slug": "twitch-2k-streaming-1440p-2026",
+  "excerpt": "Twitch unterstützt 2026 2K-Streaming mit 1440p, HEVC und bis zu 9 Mbit/s. Wann sich das Upgrade lohnt und welche Voraussetzungen dein Setup braucht.",
+  "author": "comiker91",
+  "categories": [
+    "Streaming"
+  ],
+  "tags": [
+    "Twitch",
+    "2K Streaming",
+    "1440p",
+    "OBS",
+    "Enhanced Broadcasting",
+    "HEVC"
+  ],
+  "seo_title": "Twitch 2K Streaming 2026: 1440p, HEVC & 9 Mbit/s",
+  "meta_description": "Twitch 2K Streaming 2026 erklärt: 1440p, HEVC, 9 Mbit/s, Enhanced Broadcasting und die Frage, wann sich das Upgrade von 1080p wirklich lohnt.",
+  "focus_keyword": "Twitch 2K Streaming 2026",
+  "canonical": "https://comiker91.de/twitch-2k-streaming-1440p-2026/",
+  "og_title": "Twitch 2K Streaming 2026: Lohnt sich 1440p wirklich?",
+  "og_description": "Was Twitch 2K mit 1440p, HEVC und bis zu 9 Mbit/s bringt – inklusive Voraussetzungen, Tests und Vergleich zu 1080p.",
+  "twitter_title": "Twitch 2K Streaming 2026: 1440p richtig nutzen",
+  "twitter_description": "1440p, HEVC, Enhanced Broadcasting und bis zu 9 Mbit/s: So prüfst du, ob Twitch 2K für dein Setup sinnvoll ist.",
+  "schema_page_type": "WebPage",
+  "schema_article_type": "TechArticle",
+  "images": [
+    {
+      "file": "twitch-2k-streaming-1440p-2026-featured.webp",
+      "alt": "Modernes Twitch-Streaming-Setup für 2K-Streaming mit 1440p und OBS",
+      "title": "Twitch 2K Streaming 2026",
+      "featured": true
+    },
+    {
+      "file": "twitch-2k-hevc-bitrate-vergleich-2026.webp",
+      "alt": "Streaming-Setup mit Vergleich von Bildqualität für Twitch 2K und 1080p",
+      "title": "Twitch 2K, HEVC und Bitrate im Vergleich",
+      "featured": false
+    }
+  ]
+}

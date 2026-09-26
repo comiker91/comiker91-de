@@ -28,7 +28,7 @@ final class CM91_Turnstile_Login{
   if(is_wp_error($r))return new WP_Error('turnstile_unavailable','Die Sicherheitsprüfung ist derzeit nicht erreichbar. Bitte erneut versuchen.');
   $d=json_decode((string)wp_remote_retrieve_body($r),true);if(!is_array($d)||empty($d['success']))return new WP_Error('turnstile_invalid','Die Sicherheitsprüfung war nicht erfolgreich.');
   $host=strtolower((string)($d['hostname']??''));if($host===''||!hash_equals(self::expected_host(),$host))return new WP_Error('turnstile_hostname','Die Sicherheitsprüfung konnte dieser Website nicht zugeordnet werden.');
-  return true;
+  $action=sanitize_key((string)($d['action']??''));if($action===''||!hash_equals(self::action(),$action))return new WP_Error('turnstile_action','Die Sicherheitsprüfung gehört nicht zu diesem Anmeldevorgang.');return true;
  }
  static function check_login($user,$username,$password){if(!self::protected_action())return$user;$v=self::verify();return is_wp_error($v)?$v:$user;}
  static function check_lostpassword($errors,$user_data){$v=self::verify();if(is_wp_error($v))$errors->add($v->get_error_code(),$v->get_error_message());}

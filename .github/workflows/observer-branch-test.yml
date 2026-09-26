@@ -40,3 +40,7 @@ jobs:
           git show origin/main:plugins/cm91-content-bridge/content-bridge-legacy.php > /tmp/original-legacy.php
           cmp -s /tmp/original-legacy.php plugins/cm91-content-bridge/content-bridge-legacy.php
           echo 'LEGACY_BRIDGE_BYTE_IDENTICAL=yes'
+
+      - name: Turnstile authentication behavior contract
+        run: php tests/turnstile-login-contract.php
+

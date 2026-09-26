@@ -7,7 +7,7 @@ final class CM91_Turnstile_Login{
   add_action('admin_init',[__CLASS__,'save']);
   add_action('login_enqueue_scripts',[__CLASS__,'enqueue']);
   add_action('login_form',[__CLASS__,'field']);
-  add_filter('authenticate',[__CLASS__,'check_login'],30,3);
+  add_filter('authenticate',[__CLASS__,'check_login'],99,3);
   add_action('lostpassword_form',[__CLASS__,'field']);
   add_action('lostpassword_post',[__CLASS__,'check_lostpassword'],10,2);
   add_action('register_form',[__CLASS__,'field']);
@@ -32,8 +32,8 @@ final class CM91_Turnstile_Login{
   $r=wp_remote_post('https://challenges.cloudflare.com/turnstile/v0/siteverify',['timeout'=>10,'body'=>$body]);
   if(is_wp_error($r))return new WP_Error('turnstile_unavailable','Die Sicherheitsprüfung ist derzeit nicht erreichbar. Bitte erneut versuchen.');
   $d=json_decode((string)wp_remote_retrieve_body($r),true);if(wp_remote_retrieve_response_code($r)!==200||!is_array($d)||($d['success']??false)!==true)return new WP_Error('turnstile_invalid','Die Sicherheitsprüfung war nicht erfolgreich.');
-  $host=strtolower((string)($d['hostname']??''));if($host===''||!hash_equals(self::expected_host(),$host))return new WP_Error('turnstile_hostname','Die Sicherheitsprüfung konnte dieser Website nicht zugeordnet werden.');
-  $action=sanitize_key((string)($d['action']??''));if($action===''||!hash_equals(self::action(),$action))return new WP_Error('turnstile_action','Die Sicherheitsprüfung gehört nicht zu diesem Anmeldevorgang.');return true;
+  $expected=self::expected_host();$host=strtolower((string)($d['hostname']??''));if($expected===''||$host===''||!hash_equals($expected,$host))return new WP_Error('turnstile_hostname','Die Sicherheitsprüfung konnte dieser Website nicht zugeordnet werden.');
+  $action=is_string($d['action']??null)?$d['action']:'';if($action===''||!hash_equals(self::action(),$action))return new WP_Error('turnstile_action','Die Sicherheitsprüfung gehört nicht zu diesem Anmeldevorgang.');return true;
  }
  static function check_login($user,$username,$password){if(!self::interactive()||!self::protected_action())return$user;$v=self::verify();return is_wp_error($v)?$v:$user;}
  static function check_lostpassword($errors,$user_data){$v=self::verify();if(is_wp_error($v))$errors->add($v->get_error_code(),$v->get_error_message());}
@@ -48,4 +48,3 @@ final class CM91_Turnstile_Login{
  static function page(){if(!current_user_can('manage_options'))return;$c=self::cfg();$ready=trim((string)$c['site_key'])!==''&&trim((string)$c['secret'])!=='';echo'<div class="wrap"><h1>Bot-Schutz</h1><p>Cloudflare Turnstile für WordPress-Login, Passwort-Reset und Registrierung. Ohne vollständige Konfiguration bleibt der Login offen.</p><p><strong>Hostname:</strong> <code>'.esc_html(self::expected_host()).'</code></p><form method="post">';wp_nonce_field('comitement_turnstile_login_save');echo'<input type="hidden" name="option_page" value="comitement_turnstile_login"><table class="form-table"><tr><th>Schutz aktivieren</th><td><label><input type="checkbox" name="enabled" value="1" '.checked(!empty($c['enabled']),true,false).'> aktiv</label></td></tr><tr><th>Site Key</th><td><input class="regular-text" name="site_key" value="'.esc_attr((string)$c['site_key']).'" autocomplete="off"></td></tr><tr><th>Secret Key</th><td><input class="regular-text" type="password" name="secret" value="" placeholder="'.(!empty($c['secret'])?'gespeichert – leer lassen zum Beibehalten':'Secret eintragen').'" autocomplete="new-password"></td></tr><tr><th>Status</th><td>'.($ready?'<strong>Keys vollständig</strong>':'Keys unvollständig – Schutz wird nicht erzwungen').'</td></tr></table><p><button class="button button-primary">Speichern</button></p></form></div>';}
 }
 CM91_Turnstile_Login::init();
-

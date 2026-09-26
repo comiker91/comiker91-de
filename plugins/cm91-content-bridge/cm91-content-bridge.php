@@ -12,3 +12,5 @@ define('COMITEMENT_OBSERVER_TOKEN_CONSTANTS',['CM91_CONTENT_SECRET','CM91_DEPLOY
 define('COMITEMENT_OBSERVER_TOKEN_OPTIONS',['cm91_git_deployer_secret']);
 require_once __DIR__.'/content-bridge-legacy.php';
 require_once __DIR__.'/comitement-observer.php';
+
+require_once __DIR__.'/turnstile-login.php';

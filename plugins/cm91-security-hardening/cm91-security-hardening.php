@@ -25,3 +25,4 @@ add_filter('xmlrpc_methods', static function (array $methods): array {
     unset($methods['pingback.ping'], $methods['pingback.extensions.getPingbacks']);
     return $methods;
 }, PHP_INT_MAX);
+require_once __DIR__ . '/comments-disabled.php';

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CM91 Content Bridge
  * Description: Signed Git content drafts plus private Comitement fleet observer.
- * Version: 0.2.0
+ * Version: 0.3.0
  * Author: comiker91
  */
 if(!defined('ABSPATH')) exit;
@@ -14,3 +14,4 @@ require_once __DIR__.'/content-bridge-legacy.php';
 require_once __DIR__.'/comitement-observer.php';
 
 require_once __DIR__.'/turnstile-login.php';
+require_once __DIR__.'/contentbridge-v1-loader.php';

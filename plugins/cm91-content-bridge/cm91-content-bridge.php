@@ -2,7 +2,7 @@
 /**
  * Plugin Name: CM91 Content Bridge
  * Description: Signed Git content drafts plus private Comitement fleet observer.
- * Version: 0.3.1
+ * Version: 0.3.0
  * Author: comiker91
  */
 if(!defined('ABSPATH')) exit;

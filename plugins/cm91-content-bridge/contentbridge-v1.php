@@ -45,7 +45,18 @@ final class Comitement_ContentBridge_V1 {
    'content.create','content.get','content.update','content.publish','content.schedule','media.upload','media.featured','media.inline','seo.metadata','taxonomy.categories','taxonomy.tags','placeholder.images'
   ],'limits'=>['media_bytes'=>self::MAX_MEDIA,'request_bytes'=>self::MAX_BODY,'inline_images'=>30],
   'media'=>['inputs'=>['base64','attachment_id'],'mime_types'=>['image/jpeg','image/png','image/webp','image/gif'],'url_import'=>false],
-  'placeholder'=>'{{image:filename}}','default_status'=>'draft','taxonomies'=>$taxonomies];
+  'placeholder'=>'{{image:filename}}','default_status'=>'draft','default_author'=>self::default_author_info(),'quality_gates'=>['reject_generic_image_metadata'=>true,'publication_requires_resolved_images'=>true],'taxonomies'=>$taxonomies];
+ }
+ private static function default_author():int {
+  $configured=(int)get_option('comitement_contentbridge_default_author',0);
+  if($configured>0&&user_can($configured,'edit_posts'))return $configured;
+  if(user_can(1,'edit_posts'))return 1;
+  $users=get_users(['role__in'=>['administrator','editor','author'],'number'=>1,'orderby'=>'ID','order'=>'ASC','fields'=>'ID']);
+  return $users?(int)$users[0]:0;
+ }
+ private static function default_author_info():array {
+  $id=self::default_author();$u=$id&&function_exists('get_userdata')?get_userdata($id):false;
+  return ['id'=>$id,'name'=>$u?$u->display_name:''];
  }
  private static function payload($r) {
   $d=$r->get_json_params();if(!is_array($d)||array_is_list($d))return self::error('malformed_payload','A JSON object is required.');
@@ -101,6 +112,8 @@ final class Comitement_ContentBridge_V1 {
   foreach(['file','alt_text','caption','title','source','credit'] as $k)if(isset($image[$k])&&(!is_string($image[$k])||strlen($image[$k])>2000))return self::error('invalid_media','Invalid image metadata.');
   if(isset($image['file'])&&(!preg_match('/^[A-Za-z0-9._-]+\.(jpe?g|png|gif|webp)$/iD',$image['file'])||str_contains($image['file'],'..')))return self::error('invalid_media','A safe image filename is required.');
   if(isset($image['attachment_id'])&&(!is_int($image['attachment_id'])||$image['attachment_id']<1))return self::error('invalid_media','attachment_id must be a positive integer.');
+  $qualityText=strtolower(implode(' ',array_filter([(string)($image['file']??''),(string)($image['alt_text']??''),(string)($image['title']??''),(string)($image['caption']??'')])));
+  if($qualityText!==''&&preg_match('/placeholder|beispielbild|artikel[ -]?mit[ -]?bildern|so[ -]?sieht[ -]?der[ -]?artikel|bild[ -]?so[ -]?sieht/i',$qualityText))return self::error('invalid_media','Generic placeholder-style image metadata is not allowed. Use a topic-specific visual and descriptive alt text.',422);
   return $image;
  }
  private static function attachment(array $image):bool {return !empty($image['attachment_id'])&&get_post_type($image['attachment_id'])==='attachment'&&wp_attachment_is_image($image['attachment_id'])&&(bool)wp_get_attachment_url($image['attachment_id']);}
@@ -130,6 +143,7 @@ final class Comitement_ContentBridge_V1 {
   if(!$id&&$status!=='draft')return self::error('draft_required','Create a draft before publishing or scheduling.',409);
   $post=['post_type'=>'post','post_status'=>$status];
   if($id)$post['ID']=$id;
+  elseif(!isset($d['author'])){$defaultAuthor=self::default_author();if($defaultAuthor>0)$post['post_author']=$defaultAuthor;}
   foreach(['title'=>'post_title','excerpt'=>'post_excerpt','slug'=>'post_name'] as $k=>$field)if(isset($d[$k]))$post[$field]=$k==='slug'?sanitize_title($d[$k]):sanitize_text_field($d[$k]);
   if(isset($d['author'])){if(!is_int($d['author'])||!user_can($d['author'],'edit_posts'))return self::error('invalid_author','Author must be an existing editor ID.');$post['post_author']=$d['author'];}
   if($status==='future'){

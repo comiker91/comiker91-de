@@ -9,16 +9,29 @@ class CB_Request {
  function __construct(private $method,private $route,private $d,private $id=0){$this->body=is_string($d)?$d:json_encode($d);}
  function get_method(){return $this->method;}function get_route(){return $this->route;}function get_body(){return $this->body;}function get_json_params(){return json_decode($this->body,true);}function get_param($k){return $k==='id'?$this->id:null;}function get_header($k){return $this->headers[$k]??'';}
 }
-$options=[];$posts=[];$meta=[];$terms=[];$object_terms=[];$thumbs=[];$upload_failure=false;
+class MediaReferenceDB {
+ public $posts='posts',$postmeta='postmeta',$options='options',$usermeta='usermeta',$last_error='';function query($sql){return 0;}private $values=[];
+ function esc_like($s){return addcslashes($s,'_%');}function prepare($sql,...$values){$this->values=$values;return $sql;}
+ function get_var($sql){global $posts,$thumbs,$options,$meta,$userMediaReferences;
+  if(str_contains($sql,'FROM usermeta'))return (string)count(array_filter($userMediaReferences??[],fn($id)=>(string)$id===$this->values[1]));
+  if(str_contains($sql,'FROM options')){$count=0;foreach($options as$key=>$value){if(preg_match('/^(cbv1_|cbop_|cmod_)/',$key))continue;$value=is_array($value)?serialize($value):(string)$value;foreach($this->values as$pattern)if(str_contains($value,stripslashes(trim($pattern,'%')))){$count++;break;}}return (string)$count;}
+  if(str_contains($sql,'LEFT JOIN')){$count=0;$exclude=$this->values[0];$stem=stripslashes(trim($this->values[1],'%'));foreach($posts as$p){if($p->ID===$exclude)continue;if(str_contains($p->post_content,$stem)){$count++;continue;}foreach($meta[$p->ID]??[]as$value){$value=is_array($value)?serialize($value):(string)$value;if($value===$this->values[2]||str_contains($value,stripslashes(trim($this->values[3],'%')))){$count++;break;}}}return (string)$count;}
+  $exclude=$this->values[0];$aid=(int)$this->values[count($this->values)-3];$count=0;foreach($posts as$p){if($p->ID===$exclude||$p->post_type==='revision')continue;if(($thumbs[$p->ID]??0)===$aid||str_contains($p->post_content,'wp-image-'.$aid)||str_contains($p->post_content,'https://unit.invalid/media/'.$aid.'.png'))$count++;}return (string)$count;}
+}
+$wpdb=new MediaReferenceDB();
+$nextPostId=1;$options=[];$posts=[];$meta=[];$terms=[];$object_terms=[];$thumbs=[];$upload_failure=false;
 function is_wp_error($v){return $v instanceof WP_Error;}function add_action(...$a){}function register_rest_route(...$a){}
 function add_option($k,$v,...$a){global $options;if(array_key_exists($k,$options))return false;$options[$k]=$v;return true;}
+function delete_option($k){global $options;unset($options[$k]);return true;}
 function get_option($k,$d=false){global $options;return $options[$k]??$d;}function update_option($k,$v,...$a){global $options;$options[$k]=$v;return true;}
 function sanitize_key($s){return strtolower(preg_replace('/[^a-zA-Z0-9_-]/','',$s));}function sanitize_text_field($s){return strip_tags($s);}function sanitize_title($s){return strtolower(str_replace(' ','-',$s));}function wp_kses_post($s){return str_replace('<script>bad</script>','',$s);}function wp_slash($s){return $s;}
 function esc_url($v){return htmlspecialchars($v,ENT_QUOTES);}function esc_attr($v){return htmlspecialchars($v,ENT_QUOTES);}function esc_html($v){return htmlspecialchars($v,ENT_QUOTES);}function esc_url_raw($v){return $v;}function wp_parse_url(...$a){return parse_url(...$a);}function wp_json_encode($v,...$a){return json_encode($v,...$a);}
 function get_post($id){global $posts;return $posts[$id]??null;}function get_post_type($id){return get_post($id)->post_type??null;}
-function wp_insert_post($p,$err=false){global $posts;$id=$p['ID']??(count($posts)+1);$old=$posts[$id]??(object)['post_status'=>'draft','post_type'=>'post','post_title'=>'','post_name'=>'','post_content'=>'','post_excerpt'=>'','post_author'=>1,'post_date_gmt'=>''];$posts[$id]=(object)array_merge((array)$old,$p,['ID'=>$id]);return $id;}function wp_update_post($p,...$a){return wp_insert_post($p);}
+function wp_insert_post($p,$err=false){global $posts,$nextPostId;$id=$p['ID']??$nextPostId++;$old=$posts[$id]??(object)['post_status'=>'draft','post_type'=>'post','post_title'=>'','post_name'=>'','post_content'=>'','post_excerpt'=>'','post_author'=>1,'post_date_gmt'=>''];$posts[$id]=(object)array_merge((array)$old,$p,['ID'=>$id]);return $id;}function wp_update_post($p,...$a){return wp_insert_post($p);}
 function get_post_meta($id,$k,$single=true){global $meta;return $meta[$id][$k]??'';}function update_post_meta($id,$k,$v){global $meta;$meta[$id][$k]=$v;return true;}
+function wp_get_attachment_metadata($id){return [];}function delete_post_meta($id,$key){global$meta;unset($meta[$id][$key]);}
 function get_post_thumbnail_id($id){global $thumbs;return $thumbs[$id]??0;}function set_post_thumbnail($id,$aid){global $thumbs;$thumbs[$id]=$aid;return true;}
+function attachment_url_to_postid($url){preg_match('~/media/(\d+)~',$url,$m);return (int)($m[1]??0);}
 function wp_get_attachment_url($id){return get_post_type($id)==='attachment'?'https://unit.invalid/media/'.$id.'.png':'';}function wp_attachment_is_image($id){return get_post_type($id)==='attachment';}function get_post_field($k,$id){return get_post($id)->$k??'';}function get_the_title($id){return get_post($id)->post_title??'';}
 function user_can($id,$cap){return $id===1;}function get_permalink($id){return 'https://unit.invalid/?p='.$id;}function get_preview_post_link($p){return 'https://unit.invalid/?preview='.$p->ID;}function get_post_time($fmt,$utc,$p){return gmdate($fmt,strtotime($p->post_date_gmt?:'now'));}function get_date_from_gmt($v){return $v;}function current_time(...$a){return gmdate('Y-m-d H:i:s');}
 function get_page_by_path($slug,$format,$type){global $posts;foreach($posts as $p)if($p->post_type===$type&&$p->post_name===$slug)return $p;return null;}
@@ -45,6 +58,7 @@ $p=create($d);check(!is_wp_error($p),'create draft');$id=$p['post_id'];check($p[
 $repeat=create($d);check($repeat['post_id']===$id&&count($posts)===2,'idempotency retry does not duplicate');$bad=$d;$bad['title']='Different';check(is_wp_error(create($bad)),'idempotency conflict');
 $u=update($id,['idempotency_key'=>'update-01','title'=>'Changed','categories'=>[],'tags'=>['Updated'],'seo'=>['meta_description'=>'Changed description']]);check($u['title']==='Changed'&&$u['status']==='draft'&&$u['categories']===[]&&$u['seo']['seo_title']==='SEO title','update preserves omitted values');
 $f=create(['idempotency_key'=>'fallback-01','title'=>'Fallback','content'=>'<p>Text</p>{{image:missing.png}}','placeholder_fallback'=>true,'inline_images'=>[['file'=>'missing.png','alt_text'=>'Fallback alt']],'featured_image'=>['file'=>'featured.png','alt_text'=>'Featured alt']]);check(!is_wp_error($f)&&$f['media_path']==='placeholder'&&$f['placeholders_remaining']===1&&$f['featured_image_pending'],'placeholder fallback');check(get_post_meta($f['post_id'],'_legacy_images',true)[0]['file']==='missing.png'&&get_post_meta($f['post_id'],'_legacy_source',true)!=='','legacy ZIP metadata/source preserved');
+$emptyA=create(['idempotency_key'=>'empty-slug-a','title'=>'Empty slug A','content'=>'A']);$emptyB=create(['idempotency_key'=>'empty-slug-b','title'=>'Empty slug B','content'=>'B']);check(!is_wp_error($emptyA)&&!is_wp_error($emptyB),'multiple drafts may start without explicit slug');$emptyRestore=update($emptyB['post_id'],['idempotency_key'=>'empty-slug-restore','slug'=>'']);check(!is_wp_error($emptyRestore)&&$emptyRestore['slug']==='','empty draft slug can be restored without false collision');
 check(is_wp_error(update($f['post_id'],['idempotency_key'=>'publish-fallback','status'=>'publish'])),'publishing unresolved placeholders blocked');
 check(is_wp_error(create(['idempotency_key'=>'bad-media','title'=>'Bad','content'=>'Hi','inline_images'=>[['attachment_id'=>999,'file'=>'bad.png']]])),'media failure fails without fallback');
 check(is_wp_error(create(['idempotency_key'=>'malformed','title'=>[],'content'=>'Hi'])),'malformed payload denied');
@@ -64,3 +78,4 @@ check(is_wp_error(Comitement_ContentBridge_V1::cleanup(signed('DELETE','/content
 $fid=$fixture['post_id'];$cl=Comitement_ContentBridge_V1::cleanup(signed('DELETE','/contentbridge/v1/test-fixtures/'.$fid,['idempotency_key'=>'cleanup-fixture','test_fixture'=>'acceptance-unit-test'],$fid));check(!is_wp_error($cl)&&!get_post($fid),'fixture cleanup');
 echo "CONTENTBRIDGE_V1_UNIT_OK\n";
 } finally {foreach(['file','media','image'] as $f)unlink(ABSPATH.'wp-admin/includes/'.$f.'.php');rmdir(ABSPATH.'wp-admin/includes');rmdir(ABSPATH.'wp-admin');rmdir(ABSPATH);}
+

@@ -32,6 +32,11 @@ function get_post_field($field, $id) { return $GLOBALS['c91_test_context']['page
 function sanitize_title($value) { return strtolower(trim($value)); }
 function sanitize_text_field($value) { return trim($value); }
 function wp_unslash($value) { return stripslashes($value); }
+$GLOBALS['c91_test_options'] = [];
+$GLOBALS['c91_test_w3tc_flush_count'] = 0;
+function get_option($name, $default = false) { return $GLOBALS['c91_test_options'][$name] ?? $default; }
+function update_option($name, $value, $autoload = null) { $GLOBALS['c91_test_options'][$name] = $value; return true; }
+function w3tc_flush_all() { $GLOBALS['c91_test_w3tc_flush_count']++; }
 function assert_same($actual, $expected, $message) {
     if ($actual !== $expected) {
         fwrite(STDERR, "FAIL $message: " . var_export($actual, true) . " != " . var_export($expected, true) . "\n");
@@ -47,6 +52,15 @@ function assert_contains($haystack, $needle, $message) {
 require dirname(__DIR__) . '/themes/comiker91-streamer-theme/functions.php';
 assert_same(in_array('c91_news_main_query', $GLOBALS['c91_test_hooks']['pre_get_posts'] ?? [], true), true, 'main query hook installed');
 assert_same(in_array('c91_exclude_archive_sitemap', $GLOBALS['c91_test_hooks']['wpseo_sitemap_exclude_taxonomy'] ?? [], true), true, 'SEO hooks register before header');
+assert_same(in_array('c91_flush_w3tc_on_theme_update', $GLOBALS['c91_test_hooks']['init'] ?? [], true), true, 'theme-version cache invalidation hook registered');
+c91_flush_w3tc_on_theme_update();
+assert_same($GLOBALS['c91_test_w3tc_flush_count'], 1, 'W3TC cache invalidated on theme change');
+assert_same(get_option('c91_w3tc_last_flushed_theme'), C91_VERSION, 'cache version marker persisted');
+c91_flush_w3tc_on_theme_update();
+assert_same($GLOBALS['c91_test_w3tc_flush_count'], 1, 'same theme version never flushes again');
+$GLOBALS['c91_test_options']['c91_w3tc_last_flushed_theme'] = 'previous-version';
+c91_flush_w3tc_on_theme_update();
+assert_same($GLOBALS['c91_test_w3tc_flush_count'], 2, 'next theme version flushes again');
 
 $GLOBALS['c91_test_context'] = ['front' => true, 'c91_news' => 1, 'paged' => 1];
 assert_same(c91_seo_canonical_url(), 'https://comiker91.de/news/', 'news canonical beats homepage detection');

@@ -38,6 +38,13 @@ jobs:
           find plugins themes -type f -name '*.php' -print0 | xargs -0 -r -n1 php -l
           test -f scripts/validate-content-package.php
           php -l scripts/validate-content-package.php
+      - name: Validate schema fallback and Yoast ownership before deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -l tests/schema-ownership-contract.php
+          php tests/schema-ownership-contract.php fallback
+          php tests/schema-ownership-contract.php yoast
       - name: Check deployment secret exists
         env:
           CM91_DEPLOY_SECRET: ${{ secrets.CM91_DEPLOY_SECRET }}

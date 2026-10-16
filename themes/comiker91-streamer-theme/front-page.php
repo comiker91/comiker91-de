@@ -80,6 +80,7 @@ if ($home_share_image_id):
       <span class="eyebrow">COMIKER91 EMPFIEHLT</span>
       <h2>Streamer, die einen Blick wert sind</h2>
       <p>Eine kleine persönliche Auswahl von Streamern, die ich selbst gerne schaue und euch gerne weiterempfehle.</p>
+      <p><a class="text-link" href="<?php echo esc_url(get_post_type_archive_link('streamer')); ?>">Alle Streamer-Profile ansehen →</a></p>
     </div>
     <?php
       $q = new WP_Query(['post_type'=>'streamer','posts_per_page'=>4,'post_status'=>'publish','orderby'=>'menu_order date','order'=>'ASC']);
@@ -110,7 +111,7 @@ if ($home_share_image_id):
               <span class="streamer-pick-fallback"><?php echo esc_html(mb_strtoupper(mb_substr($display,0,1))); ?></span>
             <?php endif; ?>
           </a>
-          <a class="streamer-pick-name" href="<?php echo esc_url($url); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html($display); ?></a>
+          <a class="streamer-pick-name" href="<?php echo esc_url(get_permalink()); ?>"><?php echo esc_html($display); ?></a>
           <a class="streamer-pick-link" href="<?php echo esc_url($url); ?>" target="_blank" rel="noopener noreferrer">Auf Twitch ansehen →</a>
           <?php if($live): ?>
             <a class="streamer-pick-live" href="<?php echo esc_url($url); ?>" target="_blank" rel="noopener noreferrer"><span></span> LIVE – jetzt ansehen</a>

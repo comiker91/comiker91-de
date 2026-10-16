@@ -2,24 +2,48 @@
 if (!defined('ABSPATH')) exit;
 
 /** Technical SEO helpers for the comiker91 theme. */
+function c91_is_news_route() {
+    return (int) get_query_var('c91_news') === 1;
+}
+
+function c91_news_has_filters() {
+    return c91_is_news_route() && (!empty($_GET['thema']) || !empty($_GET['q']));
+}
+
+/**
+ * Empty tag/category/author archives repeat our dedicated /news/ feed.
+ * The /227-2/ legacy page visibly contains a 404-style placeholder (HTTP 200).
+ * These remain accessible for visitors but are not search landing pages.
+ */
+function c91_noindex_low_value_archive() {
+    if (is_category() || is_tag() || is_author() || is_tax('streamer_category')) return true;
+    if (c91_news_has_filters()) return true;
+    return is_page() && get_post_field('post_name', get_queried_object_id()) === '227-2';
+}
+
 function c91_seo_description() {
+    if (c91_is_news_route()) {
+        $page = max(1, (int) get_query_var('paged'));
+        return 'News, Gaming, Streams und Projekte von comiker91.' . ($page > 1 ? ' Seite ' . $page . '.' : '');
+    }
     if (is_front_page()) return get_theme_mod('c91_hero_text', 'Gaming, Streams, Videos, News und Community von comiker91.');
     if (is_singular()) {
         $post = get_queried_object();
         if ($post && has_excerpt($post)) return wp_strip_all_tags(get_the_excerpt($post));
         if ($post) return wp_trim_words(wp_strip_all_tags(strip_shortcodes($post->post_content)), 28, '…');
     }
-    if ((int) get_query_var('c91_news') === 1) return 'News, Gaming, Streams und Projekte von comiker91.';
     if (is_post_type_archive('streamer')) return 'Streamer und Creator aus der comiker91 Community.';
     return get_bloginfo('description');
 }
 
 function c91_seo_canonical_url() {
-    if (is_front_page()) return home_url('/');
-    if ((int) get_query_var('c91_news') === 1) {
+    // The custom rewrite must take precedence over WP's front-page detection.
+    if (c91_is_news_route()) {
         $paged = max(1, (int) get_query_var('paged'));
+        if (c91_news_has_filters()) return home_url('/news/');
         return $paged > 1 ? home_url('/news/page/' . $paged . '/') : home_url('/news/');
     }
+    if (is_front_page()) return home_url('/');
     if (is_singular()) return get_permalink();
     if (is_post_type_archive()) return get_post_type_archive_link(get_query_var('post_type'));
     return '';
@@ -27,6 +51,9 @@ function c91_seo_canonical_url() {
 
 function c91_seo_head() {
     if (is_admin() || is_feed() || is_robots()) return;
+    // Yoast owns metadata when enabled. Theme fallback would otherwise
+    // duplicate description, canonical and Open Graph tags on public pages.
+    if (defined('WPSEO_VERSION')) return;
     $description = c91_seo_description();
     $canonical = c91_seo_canonical_url();
     if ($description) echo '<meta name="description" content="' . esc_attr($description) . '">' . "\n";
@@ -119,10 +146,49 @@ function c91_schema_graph() {
 add_action('wp_head', 'c91_schema_graph', 30);
 
 function c91_seo_robots($robots) {
-    if (is_search() || is_404()) {
+    if (is_search() || is_404() || c91_noindex_low_value_archive()) {
+        unset($robots['index']);
         $robots['noindex'] = true;
         $robots['follow'] = true;
     }
     return $robots;
 }
 add_filter('wp_robots', 'c91_seo_robots');
+
+// Yoast owns head SEO on PROD, including the non-standard /news/ rewrite.
+function c91_news_yoast_title($title) {
+    if (!c91_is_news_route()) return $title;
+    $paged = max(1, (int) get_query_var('paged'));
+    return $paged > 1 ? 'News – Seite ' . $paged . ' – comiker91' : 'News – comiker91';
+}
+function c91_news_yoast_canonical($canonical) {
+    return c91_is_news_route() ? c91_seo_canonical_url() : $canonical;
+}
+function c91_news_yoast_description($description) {
+    return c91_is_news_route() ? c91_seo_description() : $description;
+}
+function c91_noindex_yoast_robots($robots) {
+    return c91_noindex_low_value_archive() ? 'noindex, follow' : $robots;
+}
+add_filter('wpseo_title', 'c91_news_yoast_title');
+add_filter('wpseo_canonical', 'c91_news_yoast_canonical');
+add_filter('wpseo_opengraph_url', 'c91_news_yoast_canonical');
+add_filter('wpseo_metadesc', 'c91_news_yoast_description');
+add_filter('wpseo_opengraph_desc', 'c91_news_yoast_description');
+add_filter('wpseo_robots', 'c91_noindex_yoast_robots');
+
+// Exclude redundant taxonomies/author from Yoast XML sitemaps as well.
+// Filters must be registered from functions.php, BEFORE sitemap rendering.
+function c91_exclude_archive_sitemap($excluded, $taxonomy) {
+    return in_array($taxonomy, ['category', 'post_tag', 'streamer_category'], true) ? true : $excluded;
+}
+function c91_exclude_author_sitemap($users) {
+    return [];
+}
+function c91_exclude_placeholder_page_sitemap($entry, $type, $object) {
+    if ($type === 'post' && is_object($object) && ($object->post_type ?? '') === 'page' && ($object->post_name ?? '') === '227-2') return [];
+    return $entry;
+}
+add_filter('wpseo_sitemap_exclude_taxonomy', 'c91_exclude_archive_sitemap', 10, 2);
+add_filter('wpseo_sitemap_exclude_author', 'c91_exclude_author_sitemap');
+add_filter('wpseo_sitemap_entry', 'c91_exclude_placeholder_page_sitemap', 10, 3);

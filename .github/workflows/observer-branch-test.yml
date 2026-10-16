@@ -44,3 +44,12 @@ jobs:
       - name: Turnstile authentication behavior contract
         run: php tests/turnstile-login-contract.php
 
+      - name: SEO links, main query, canonicals and Yoast regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in themes/comiker91-streamer-theme/{functions.php,header.php,front-page.php,news.php,archive-streamer.php,single-streamer.php,inc/seo.php} tests/seo-linkage-contract.php; do
+            php -l "$file"
+          done
+          php tests/seo-linkage-contract.php
+

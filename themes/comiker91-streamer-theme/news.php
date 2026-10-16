@@ -6,22 +6,10 @@ $paged = max(1, (int) get_query_var('paged'));
 $category_slug = isset($_GET['thema']) ? sanitize_title(wp_unslash($_GET['thema'])) : '';
 $search_term = isset($_GET['q']) ? sanitize_text_field(wp_unslash($_GET['q'])) : '';
 
-$args = [
-    'post_type'           => 'post',
-    'post_status'         => 'publish',
-    'posts_per_page'      => 7,
-    'paged'               => $paged,
-    'ignore_sticky_posts' => false,
-];
-
-if ($category_slug) {
-    $args['category_name'] = $category_slug;
-}
-if ($search_term) {
-    $args['s'] = $search_term;
-}
-
-$news = new WP_Query($args);
+// Main query is configured in c91_news_main_query so WordPress 404 handling,
+// SEO canonicals and visible pagination all operate on the same result set.
+global $wp_query;
+$news = $wp_query;
 $categories = get_categories(['hide_empty' => true]);
 ?>
 

@@ -7,7 +7,7 @@ on:
 permissions: {contents: read}
 jobs:
   contract:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, seo]
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
@@ -52,4 +52,7 @@ jobs:
             php -l "$file"
           done
           php tests/seo-linkage-contract.php
+          php -l tests/schema-ownership-contract.php
+          php tests/schema-ownership-contract.php fallback
+          php tests/schema-ownership-contract.php yoast
 

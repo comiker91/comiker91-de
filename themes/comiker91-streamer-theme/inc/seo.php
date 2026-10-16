@@ -110,7 +110,10 @@ function c91_breadcrumbs() {
 }
 
 function c91_schema_graph() {
-    if (is_admin()) return;
+    // Yoast owns the public Schema.org graph when active. A second BreadcrumbList
+    // with the same #breadcrumb @id merges two itemListElement arrays in Google.
+    // Keep this graph only as a fallback when Yoast is unavailable.
+    if (is_admin() || is_feed() || is_robots() || defined('WPSEO_VERSION')) return;
     $graph = [];
     $graph[] = [
         '@type' => 'WebSite', '@id' => home_url('/#website'), 'url' => home_url('/'),

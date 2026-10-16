@@ -1,7 +1,10 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-define('C91_VERSION', '2.4.1');
+define('C91_VERSION', '2.4.2');
+
+// Register SEO/Yoast hooks during bootstrap: sitemap and query hooks run before header.php.
+require_once get_template_directory() . '/inc/seo.php';
 
 function c91_setup() {
     add_theme_support('title-tag');
@@ -461,6 +464,28 @@ function c91_reading_time() {
  * Native /news/ hub.
  * Works without creating a WordPress page and supports /news/page/2/.
  */
+/**
+ * Make the main WordPress query match the visible seven-post news listing.
+ * Without this /news/page/4/ is marked 404 before the secondary template
+ * query runs (WordPress assumes the site's default ten posts per page).
+ */
+function c91_news_main_query($query) {
+    if (is_admin() || !$query->is_main_query() || (int) $query->get('c91_news') !== 1) return;
+    $query->set('post_type', 'post');
+    $query->set('post_status', 'publish');
+    $query->set('posts_per_page', 7);
+    $query->set('ignore_sticky_posts', false);
+    if (!empty($_GET['thema'])) {
+        $query->set('category_name', sanitize_title(wp_unslash($_GET['thema'])));
+    }
+    if (!empty($_GET['q'])) {
+        $query->set('s', sanitize_text_field(wp_unslash($_GET['q'])));
+    }
+    // This is a dedicated archive route, never the blog's front page.
+    $query->is_home = false;
+}
+add_action('pre_get_posts', 'c91_news_main_query');
+
 function c91_news_rewrite_rules() {
     add_rewrite_rule('^news/?$', 'index.php?c91_news=1', 'top');
     add_rewrite_rule('^news/page/([0-9]+)/?$', 'index.php?c91_news=1&paged=$matches[1]', 'top');
@@ -500,7 +525,7 @@ function c91_fallback_menu() {
     echo '<ul><li><a href="'.esc_url(home_url('/')).'">Home</a></li><li><a href="'.esc_url(home_url('/news/')).'">News</a></li></ul>';
 }
 function c91_footer_fallback() {
-    echo '<ul><li><a href="'.esc_url(home_url('/impressum/')).'">Impressum</a></li><li><a href="'.esc_url(home_url('/datenschutz/')).'">Datenschutz</a></li></ul>';
+    echo '<ul><li><a href="'.esc_url(home_url('/impressum/')).'">Impressum</a></li><li><a href="'.esc_url(home_url('/datenschutzerklaerung/')).'">Datenschutz</a></li></ul>';
 }
 
 
@@ -517,5 +542,17 @@ function c91_hide_streamer_from_primary_menu($items, $args) {
     return $items;
 }
 add_filter('wp_nav_menu_objects', 'c91_hide_streamer_from_primary_menu', 10, 2);
+
+/** Existing assigned WP menus may still point at the old redirected privacy slug. */
+function c91_canonical_privacy_menu_link($items, $args) {
+    if (!in_array($args->theme_location ?? '', ['primary', 'footer'], true)) return $items;
+    foreach ($items as $item) {
+        if (untrailingslashit($item->url ?? '') === untrailingslashit(home_url('/datenschutz/'))) {
+            $item->url = home_url('/datenschutzerklaerung/');
+        }
+    }
+    return $items;
+}
+add_filter('wp_nav_menu_objects', 'c91_canonical_privacy_menu_link', 20, 2);
 
 add_filter( 'xmlrpc_enabled', '__return_false' );

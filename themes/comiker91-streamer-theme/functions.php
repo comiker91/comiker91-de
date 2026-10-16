@@ -1,7 +1,7 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-define('C91_VERSION', '2.4.2');
+define('C91_VERSION', '2.4.3');
 
 // Register SEO/Yoast hooks during bootstrap: sitemap and query hooks run before header.php.
 require_once get_template_directory() . '/inc/seo.php';
@@ -25,6 +25,33 @@ function c91_assets() {
     wp_enqueue_script('c91-main', get_template_directory_uri() . '/assets/js/main.js', [], C91_VERSION, true);
 }
 add_action('wp_enqueue_scripts', 'c91_assets');
+
+/**
+ * GitBridge deploys replace theme files without invoking WordPress's normal
+ * theme-upgrade hooks. W3 Total Cache can keep serving the old HTML and
+ * sitemap after a successful deploy. Invalidate its cache exactly once for
+ * each deployed theme version, never on every visitor request.
+ *
+ * W3TC documents w3tc_flush_all() in its public PHP API. Do not interfere
+ * with sites where it is disabled or unavailable.
+ */
+function c91_flush_w3tc_on_theme_update() {
+    if (!function_exists('w3tc_flush_all')) return;
+
+    $option = 'c91_w3tc_last_flushed_theme';
+    if (get_option($option, '') === C91_VERSION) return;
+
+    try {
+        w3tc_flush_all();
+    } catch (Throwable $e) {
+        // A cache backend failure must not break the public website.
+        error_log('C91: W3 Total Cache invalidation failed after theme update.');
+        return;
+    }
+
+    update_option($option, C91_VERSION, true);
+}
+add_action('init', 'c91_flush_w3tc_on_theme_update', 99);
 
 function c91_register_cpts() {
     register_post_type('streamer', [

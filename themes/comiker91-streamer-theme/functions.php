@@ -1,7 +1,7 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-define('C91_VERSION', '2.4.3');
+define('C91_VERSION', '2.4.4');
 
 // Register SEO/Yoast hooks during bootstrap: sitemap and query hooks run before header.php.
 require_once get_template_directory() . '/inc/seo.php';

@@ -201,6 +201,9 @@ if ($home_share_image_id):
         <a class="comitement-project-card" href="https://casinotester.eu/" target="_blank" rel="noopener">
           <strong>CasinoTester.eu</strong><span>Tests, Ratgeber & Glücksspiel-News</span><b>↗</b>
         </a>
+        <a class="comitement-project-card" href="<?php echo esc_url(home_url('/comischecasinos/')); ?>">
+          <strong>ComischeCasinos.de</strong><span>Spielhallen-Ratgeber &amp; 24/7-Coinpusher auf Twitch</span><b>→</b>
+        </a>
         <a class="comitement-project-card" href="https://streamtechnik.de/" target="_blank" rel="noopener">
           <strong>Streamtechnik.de</strong><span>Streaming-Hardware, Technik & Reviews</span><b>↗</b>
         </a>

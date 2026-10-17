@@ -36,6 +36,47 @@ final class Comitement_Fleet_Test_Access {
   if(!self::valid_lane($lane)||!(defined('WP_CLI')&&WP_CLI)&&!current_user_can('manage_options'))throw new RuntimeException('Test credential revocation denied.');
   delete_option(self::option($lane));
  }
+ /** Extend existing bridge tools pages; no additional admin menu or REST mutation. */
+ private static function settings_page():bool {
+  return is_admin()&&current_user_can('manage_options')&&in_array((string)($_GET['page']??''),['comitement-observer','casino-tester-net-comitement','freecash-comitement','schwabenpark-comitement'],true);
+ }
+ public static function settings():void {
+  if(!self::settings_page())return;
+  $flash=get_transient('comitement_test_key_flash_'.get_current_user_id());
+  delete_transient('comitement_test_key_flash_'.get_current_user_id());
+  echo '<div class="notice notice-info"><h2>Fleet-Testzugang für STAGING</h2><p>Diese separaten Keys erlauben ausschließlich technische Metadatenprüfungen. Beiträge, Medien, Updates und Moderation sind gesperrt.</p>';
+  if(is_array($flash)&&isset($flash['lane'])){
+   $lane=(string)$flash['lane'];
+   if(self::valid_lane($lane)){
+    $key=self::secret($lane);
+    if($key!==''&&hash_equals((string)($flash['fingerprint']??''),hash('sha256',$key))){
+     echo '<p>Neuen '.esc_html($lane).'-Test-Key jetzt einmalig in die STAGING-Verbindung übernehmen:</p><p><code style="user-select:all;overflow-wrap:anywhere">'.esc_html($key).'</code></p>';
+    }
+   }
+  }
+  foreach(self::LANES as $lane){
+   echo '<form method="post" action="'.esc_url(admin_url('admin-post.php')).'">';
+   wp_nonce_field('comitement_test_key_'.$lane);
+   echo '<input type="hidden" name="action" value="comitement_fleet_test_key"><input type="hidden" name="lane" value="'.esc_attr($lane).'"><p><strong>'.esc_html($lane).'</strong>: '.(self::secret($lane)===''?'Nicht eingerichtet':'Eingerichtet').' &nbsp; <button class="button" name="operation" value="rotate">Test-Key neu erzeugen</button> <button class="button" name="operation" value="revoke">Test-Key widerrufen</button></p></form>';
+  }
+  echo '<p>Eine Rotation betrifft ausschließlich den jeweiligen Test-Key. Produktive Zugänge bleiben unverändert.</p></div>';
+ }
+ public static function settings_save():void {
+  if(!current_user_can('manage_options'))wp_die('Nicht erlaubt.',403);
+  $lane=(string)($_POST['lane']??'');if(!self::valid_lane($lane))wp_die('Ungültiger Testzugang.',400);
+  check_admin_referer('comitement_test_key_'.$lane);
+  $operation=(string)($_POST['operation']??'');
+  if($operation==='rotate'){
+   $key=self::rotate($lane);
+   set_transient('comitement_test_key_flash_'.get_current_user_id(),['lane'=>$lane,'fingerprint'=>hash('sha256',$key)],60);
+   unset($key);
+  }elseif($operation==='revoke'){
+   self::revoke($lane);delete_transient('comitement_test_key_flash_'.get_current_user_id());
+  }else wp_die('Ungültige Aktion.',400);
+  $fallback=admin_url('tools.php?page=comitement-observer');
+  $return=wp_get_referer();
+  wp_safe_redirect($return?:$fallback);exit;
+ }
  public static function routes():void {
   register_rest_route(self::NS,'/preflight/(?P<lane>observer|contentbridge)',[
    'methods'=>'GET','callback'=>[__CLASS__,'preflight'],'permission_callback'=>[__CLASS__,'authorize']
@@ -73,3 +114,5 @@ final class Comitement_Fleet_Test_Access {
  }
 }
 add_action('rest_api_init',['Comitement_Fleet_Test_Access','routes']);
+add_action('admin_notices',['Comitement_Fleet_Test_Access','settings']);
+add_action('admin_post_comitement_fleet_test_key',['Comitement_Fleet_Test_Access','settings_save']);

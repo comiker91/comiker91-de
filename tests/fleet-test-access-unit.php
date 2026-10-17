@@ -2,7 +2,7 @@
 define('ABSPATH',__DIR__.'/');define('WP_CLI',true);
 $GLOBALS['options']=[];$GLOBALS['origin']='https://site.fixture.invalid';$GLOBALS['routes']=['/comitement-observer/v1/status'=>[], '/contentbridge/v1/capabilities'=>[]];
 function wp_salt($x){return 'synthetic-salt-only';}
-function current_user_can($x){return false;}
+function current_user_can($x){return $GLOBALS['admin']??false;}
 function get_option($k,$d=false){return $GLOBALS['options'][$k]??$d;}
 function update_option($k,$v,...$a){$GLOBALS['options'][$k]=$v;return true;}
 function add_option($k,$v,...$a){if(array_key_exists($k,$GLOBALS['options']))return false;return update_option($k,$v);}
@@ -67,3 +67,28 @@ check(Comitement_ContentBridge_V1::auth($prodRequest)===true,'existing PROD sign
 foreach([$observer,$content,$new] as $key){$prodRequest->headers['x-comitement-nonce']=bin2hex(random_bytes(20));$n=$prodRequest->headers['x-comitement-nonce'];$prodRequest->headers['x-comitement-signature']=hash_hmac('sha256',"POST\n".$prodRequest->route."\n".$ts."\n".$n."\n".$prodRequest->body,$key);check(is_wp_error(Comitement_ContentBridge_V1::auth($prodRequest)),'test key cannot authenticate a production write');}
 check($GLOBALS['options']['legacy_prod']===$prod,'no production credential mutation');
 echo "FLEET_TEST_ACCESS_UNIT_OK\n";
+
+function is_admin(){return true;}
+function get_current_user_id(){return 7;}
+function get_transient($k){return get_option('transient_'.$k);}
+function set_transient($k,$v,...$a){return update_option('transient_'.$k,$v);}
+function delete_transient($k){return delete_option('transient_'.$k);}
+function esc_html($s){return htmlspecialchars($s,ENT_QUOTES);}
+function esc_attr($s){return htmlspecialchars($s,ENT_QUOTES);}
+function esc_url($s){return htmlspecialchars($s,ENT_QUOTES);}
+function admin_url($p){return 'https://site.fixture.invalid/wp-admin/'.$p;}
+function wp_nonce_field($a){echo '<input name="_wpnonce" value="synthetic">';}
+$_GET['page']='comitement-observer';
+ob_start();Comitement_Fleet_Test_Access::settings();$html=ob_get_clean();
+check($html==='','non-admin cannot view test key settings');
+$GLOBALS['admin']=true;$visible=Comitement_Fleet_Test_Access::rotate('observer');
+ob_start();Comitement_Fleet_Test_Access::settings();$html=ob_get_clean();
+check(str_contains($html,'Fleet-Testzugang')&&!str_contains($html,$visible),'existing admin page extension never reveals stored keys by default');
+set_transient('comitement_test_key_flash_7',['lane'=>'observer','fingerprint'=>hash('sha256',$visible)],60);
+ob_start();Comitement_Fleet_Test_Access::settings();$html=ob_get_clean();
+check(str_contains($html,$visible),'new key shown once only to its authenticated administrator');
+ob_start();Comitement_Fleet_Test_Access::settings();$html=ob_get_clean();
+check(!str_contains($html,$visible),'one-time key display is consumed');
+$_GET['page']='unrelated';
+ob_start();Comitement_Fleet_Test_Access::settings();$html=ob_get_clean();
+check($html==='','unrelated admin pages unchanged');

@@ -104,6 +104,30 @@ jobs:
           if-no-files-found: warn
           retention-days: 3
 
+      - name: Verify deployed Fleet test access rejects unauthenticated callers
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, urllib.error
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+          opener=urllib.request.build_opener(NoRedirect())
+          base="https://comiker91.de"
+          for lane in ('observer','contentbridge'):
+              url=base+'/wp-json/comitement-test/v1/preflight/'+lane
+              req=urllib.request.Request(url,headers={'Cache-Control':'no-cache','Accept':'application/json'})
+              try:
+                  with opener.open(req,timeout=30) as response:
+                      status=response.status; raw=response.read(8192)
+              except urllib.error.HTTPError as error:
+                  status=error.code; raw=error.read(8192)
+              assert status in (401,403,503), 'Fleet test auth boundary or deployment missing'
+              data=json.loads(raw)
+              assert data.get('code') in ('comitement_test_not_configured','comitement_test_unauthorized'), 'Expected deployed test component denial'
+              print('FLEET_TEST_ENDPOINT_DEPLOYED lane='+lane+' unauthenticated=DENY status='+str(status))
+          print('PRODUCTION_VERIFICATION_REQUIRED=independently_provisioned_test_keys_and_positive_preflight')
+          PY
+
   content:
     name: Import changed content drafts
     runs-on: [self-hosted, linux, x64, seo]

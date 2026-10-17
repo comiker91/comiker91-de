@@ -8,6 +8,8 @@ jobs:
     runs-on: [self-hosted, linux, x64, seo]
     steps:
       - uses: actions/checkout@v4
+      - name: Isolated Fleet test-key security regression
+        run: php tests/fleet-test-access-unit.php
       - name: PHP behavior and security regression
         run: php tests/contentbridge-v1-unit.php
       - name: PHP lint bridge

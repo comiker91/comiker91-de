@@ -7,7 +7,8 @@ function get_option($k,$d=false){return $GLOBALS['options'][$k]??$d;}
 function update_option($k,$v,...$a){$GLOBALS['options'][$k]=$v;return true;}
 function add_option($k,$v,...$a){if(array_key_exists($k,$GLOBALS['options']))return false;return update_option($k,$v);}
 function delete_option($k){unset($GLOBALS['options'][$k]);return true;}
-function add_action(...$a){}
+function add_action(...$a){$GLOBALS['registered_actions'][]=$a;}
+function register_rest_route($ns,$route,$args){$GLOBALS['registered_routes'][]=[$ns,$route,$args];}
 function home_url($p){return $GLOBALS['origin'].$p;}
 class WP_Error{function __construct(public $code,public $message,public $data){}}
 class WP_REST_Response{function __construct(public $data){}function header(...$a){}}
@@ -33,6 +34,11 @@ function signed($secret,$lane='observer',$ts=null,$origin=null){
  'x-comitement-signature'=>hash_hmac('sha256',"GET\n".$r->route."\n".($origin??$GLOBALS['origin'])."\n".$ts."\n".$nonce."\n",$secret)];
  return $r;
 }
+$registered=array_map(fn($a)=>[$a[0],$a[1]],$GLOBALS['registered_actions']??[]);
+check(in_array(['rest_api_init',['Comitement_Fleet_Test_Access','routes']],$registered,true),'component load registers its REST hook');
+check(in_array(['admin_post_comitement_fleet_test_key',['Comitement_Fleet_Test_Access','settings_save']],$registered,true),'component load registers its protected admin action');
+Comitement_Fleet_Test_Access::routes();
+check(($GLOBALS['registered_routes'][0][0]??'')==='comitement-test/v1'&&($GLOBALS['registered_routes'][0][2]['methods']??'')==='GET','registered route is GET-only in isolated namespace');
 $prod='synthetic-production-secret';
 $GLOBALS['options']['legacy_prod']=$prod;
 $observer=Comitement_Fleet_Test_Access::rotate('observer');

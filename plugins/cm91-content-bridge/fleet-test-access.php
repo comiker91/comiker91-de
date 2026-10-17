@@ -4,7 +4,7 @@
  * Canonical source: comiker91/comitement. No production credential is read here.
  */
 if (!defined('ABSPATH')) exit;
-if (class_exists('Comitement_Fleet_Test_Access', false)) return;
+if (!class_exists('Comitement_Fleet_Test_Access', false)) {
 final class Comitement_Fleet_Test_Access {
  const VERSION='1.0.0';
  const NS='comitement-test/v1';
@@ -116,3 +116,4 @@ final class Comitement_Fleet_Test_Access {
 add_action('rest_api_init',['Comitement_Fleet_Test_Access','routes']);
 add_action('admin_notices',['Comitement_Fleet_Test_Access','settings']);
 add_action('admin_post_comitement_fleet_test_key',['Comitement_Fleet_Test_Access','settings_save']);
+}

@@ -8,3 +8,4 @@ Comitement_ContentBridge_V1::init(function(){
  $value=(string)get_option('cm91_git_deployer_secret','');if($value!=='')return $value;
  return '';
 },['images'=>['_cm91_content_images'],'source'=>['_cm91_content_source_id'],'managed'=>[]]);
+require_once __DIR__.'/fleet-test-access.php';
